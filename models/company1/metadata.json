@@ -1,0 +1,22 @@
+[
+  {
+    "source": "benefits_guide.txt",
+    "chunk_id": 0
+  },
+  {
+    "source": "benefits_guide.txt",
+    "chunk_id": 1
+  },
+  {
+    "source": "hr_policy.txt",
+    "chunk_id": 0
+  },
+  {
+    "source": "hr_policy.txt",
+    "chunk_id": 1
+  },
+  {
+    "source": "hr_policy.txt",
+    "chunk_id": 2
+  }
+]

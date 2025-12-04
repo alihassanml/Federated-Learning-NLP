@@ -1,0 +1,224 @@
+"""
+Federated Learning Server for Model Aggregation
+"""
+import torch
+import copy
+from models import aggregate_model_weights, RetrieverModel, GeneratorModel
+import json
+from datetime import datetime
+
+class FederatedServer:
+    """Central server for federated learning aggregation"""
+    
+    def __init__(self):
+        self.global_retriever = None
+        self.global_generator = None
+        self.round_number = 0
+        self.training_history = []
+        self.is_initialized = False
+    
+    def initialize_global_model(self):
+        """Initialize global models"""
+        print("Initializing global models...")
+        
+        self.global_retriever = RetrieverModel()
+        self.global_generator = GeneratorModel(use_lora=True)
+        
+        self.is_initialized = True
+        
+        return {
+            'status': 'success',
+            'message': 'Global models initialized',
+            'retriever_model': self.global_retriever.model_name,
+            'generator_model': self.global_generator.model_name
+        }
+    
+    def get_global_model_state(self):
+        """Get current global model state"""
+        if not self.is_initialized:
+            return None, None
+        
+        return (
+            self.global_retriever.get_state_dict(),
+            self.global_generator.get_trainable_state_dict()
+        )
+    
+    def aggregate_client_updates(self, client_updates, aggregation_method='fedavg'):
+        """
+        Aggregate updates from multiple clients
+        
+        Args:
+            client_updates: List of dicts with 'generator_updates' and metadata
+            aggregation_method: Aggregation strategy ('fedavg' or 'fedprox')
+        
+        Returns:
+            Dict with aggregation results
+        """
+        if not self.is_initialized:
+            return {'status': 'error', 'message': 'Server not initialized'}
+        
+        if not client_updates:
+            return {'status': 'error', 'message': 'No client updates provided'}
+        
+        try:
+            print(f"\n=== Federated Aggregation Round {self.round_number + 1} ===")
+            print(f"Aggregating updates from {len(client_updates)} clients")
+            
+            # Extract generator updates
+            generator_updates = [
+                update['generator_updates']
+                for update in client_updates
+                if 'generator_updates' in update
+            ]
+            
+            if not generator_updates:
+                return {'status': 'error', 'message': 'No valid updates to aggregate'}
+            
+            # Aggregate
+            aggregated_generator = aggregate_model_weights(
+                generator_updates,
+                aggregation_method=aggregation_method
+            )
+            
+            # Update global model
+            self.global_generator.load_adapter_state_dict(aggregated_generator)
+            
+            # Record round info
+            avg_loss = sum(u.get('loss', 0) for u in client_updates) / len(client_updates)
+            total_samples = sum(u.get('num_samples', 0) for u in client_updates)
+            
+            round_info = {
+                'round': self.round_number + 1,
+                'timestamp': datetime.now().isoformat(),
+                'num_clients': len(client_updates),
+                'avg_loss': avg_loss,
+                'total_samples': total_samples,
+                'aggregation_method': aggregation_method
+            }
+            
+            self.training_history.append(round_info)
+            self.round_number += 1
+            
+            print(f"Round {self.round_number} completed")
+            print(f"Average loss: {avg_loss:.4f}")
+            print(f"Total samples: {total_samples}")
+            
+            return {
+                'status': 'success',
+                'round': self.round_number,
+                'avg_loss': avg_loss,
+                'total_samples': total_samples,
+                'message': f'Round {self.round_number} aggregation successful'
+            }
+            
+        except Exception as e:
+            print(f"Error in aggregation: {e}")
+            return {'status': 'error', 'message': str(e)}
+    
+    def federated_training_round(self, clients, training_config):
+        """
+        Execute one complete federated training round
+        
+        Args:
+            clients: Dict of FederatedClient objects
+            training_config: Training configuration
+        
+        Returns:
+            Dict with round results
+        """
+        if not self.is_initialized:
+            self.initialize_global_model()
+        
+        print(f"\n{'='*60}")
+        print(f"Starting Federated Learning Round {self.round_number + 1}")
+        print(f"{'='*60}")
+        
+        # Get global model state
+        global_retriever_state, global_generator_state = self.get_global_model_state()
+        
+        # Distribute global model to clients
+        print("\n1. Distributing global model to clients...")
+        for client_id, client in clients.items():
+            if client.is_ready:
+                client.update_global_model(global_retriever_state, global_generator_state)
+                print(f"   ✓ {client_id} updated")
+        
+        # Local training on each client
+        print("\n2. Local training on clients...")
+        client_updates = []
+        
+        for client_id, client in clients.items():
+            if client.is_ready:
+                print(f"\n   Training {client_id}...")
+                result = client.local_training(training_config)
+                
+                if result['status'] == 'success':
+                    client_updates.append(result)
+                    print(f"   ✓ {client_id}: Loss = {result['loss']:.4f}")
+                else:
+                    print(f"   ✗ {client_id}: {result['message']}")
+        
+        # Aggregate updates
+        print("\n3. Aggregating client updates...")
+        aggregation_result = self.aggregate_client_updates(
+            client_updates,
+            aggregation_method=training_config.get('aggregation_method', 'fedavg')
+        )
+        
+        if aggregation_result['status'] == 'success':
+            print(f"   ✓ Aggregation successful")
+            print(f"   Average Loss: {aggregation_result['avg_loss']:.4f}")
+        else:
+            print(f"   ✗ Aggregation failed: {aggregation_result['message']}")
+        
+        print(f"\n{'='*60}")
+        print(f"Round {self.round_number} Complete")
+        print(f"{'='*60}\n")
+        
+        return aggregation_result
+    
+    def get_training_history(self):
+        """Get training history"""
+        return {
+            'current_round': self.round_number,
+            'total_rounds': len(self.training_history),
+            'history': self.training_history
+        }
+    
+    def save_global_model(self, save_dir='models/global'):
+        """Save global model"""
+        import os
+        os.makedirs(save_dir, exist_ok=True)
+        
+        self.global_retriever.save(os.path.join(save_dir, 'retriever'))
+        self.global_generator.save(os.path.join(save_dir, 'generator'))
+        
+        # Save training history
+        with open(os.path.join(save_dir, 'training_history.json'), 'w') as f:
+            json.dump(self.training_history, f, indent=2)
+        
+        return {'status': 'success', 'message': 'Global model saved'}
+    
+    def load_global_model(self, load_dir='models/global'):
+        """Load global model"""
+        import os
+        
+        if not os.path.exists(load_dir):
+            return {'status': 'error', 'message': 'Model directory not found'}
+        
+        self.global_retriever = RetrieverModel()
+        self.global_generator = GeneratorModel(use_lora=True)
+        
+        self.global_retriever.load(os.path.join(load_dir, 'retriever'))
+        self.global_generator.load(os.path.join(load_dir, 'generator'))
+        
+        # Load training history
+        history_path = os.path.join(load_dir, 'training_history.json')
+        if os.path.exists(history_path):
+            with open(history_path, 'r') as f:
+                self.training_history = json.load(f)
+                self.round_number = len(self.training_history)
+        
+        self.is_initialized = True
+        
+        return {'status': 'success', 'message': 'Global model loaded'}

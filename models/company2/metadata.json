@@ -1,0 +1,18 @@
+[
+  {
+    "source": "compliance_checklist.txt",
+    "chunk_id": 0
+  },
+  {
+    "source": "legal_doc.txt",
+    "chunk_id": 0
+  },
+  {
+    "source": "legal_doc.txt",
+    "chunk_id": 1
+  },
+  {
+    "source": "legal_doc.txt",
+    "chunk_id": 2
+  }
+]

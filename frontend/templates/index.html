@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedSearch-NLP - Federated RAG System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-6">
+            <h1 class="text-4xl font-bold">🔐 FedSearch-NLP</h1>
+            <p class="text-blue-100 mt-2">Federated Learning RAG System - Private & Collaborative</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- System Status -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">System Status</h2>
+                <button onclick="refreshStatus()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                    Refresh Status
+                </button>
+            </div>
+            <div id="systemStatus" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-600 text-sm">Server Status</p>
+                    <p id="serverStatus" class="text-2xl font-bold text-gray-800">Not Initialized</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-600 text-sm">Training Rounds</p>
+                    <p id="trainingRounds" class="text-2xl font-bold text-gray-800">0</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-600 text-sm">Active Clients</p>
+                    <p id="activeClients" class="text-2xl font-bold text-gray-800">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Initialize System -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">1️⃣ Initialize System & Select Models</h2>
+            <p class="text-gray-600 mb-4">Choose your models and initialize the federated learning server.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <!-- Retriever Model Selection -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Retriever Model (Embedding)</label>
+                    <select id="retrieverModel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="sentence-transformers/all-MiniLM-L6-v2" selected>
+                            all-MiniLM-L6-v2 (23M params)  - Fast
+                        </option>
+                        <option value="sentence-transformers/all-mpnet-base-v2">
+                            all-mpnet-base-v2 (110M params)  - Best Quality
+                        </option>
+                        <option value="sentence-transformers/paraphrase-multilingual-mpnet-base-v2">
+                            multilingual-mpnet (278M params)  - Multilingual
+                        </option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">Higher parameters = Better quality, slower speed</p>
+                </div>
+                
+                <!-- Generator Model Selection -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Generator Model (LLM)</label>
+                    <select id="generatorModel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="google/flan-t5-small" selected>
+                            Flan-T5-Small (80M params)  - Fast
+                        </option>
+                        <option value="google/flan-t5-base">
+                            Flan-T5-Base (250M params)  - Better Quality
+                        </option>
+                        <option value="google/flan-t5-large">
+                            Flan-T5-Large (780M params)  - Best Quality
+                        </option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">Larger models need more RAM</p>
+                </div>
+            </div>
+            
+            <button onclick="initializeSystem()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                Initialize System with Selected Models
+            </button>
+            <div id="initMessage" class="mt-4"></div>
+        </div>
+
+        <!-- Company Data Upload -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <!-- Company 1 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">🏢 Company 1</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Upload Documents</label>
+                    <input type="file" id="company1Files" multiple accept=".pdf,.txt,.docx" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-sm text-gray-500 mt-2">Supported: PDF, TXT, DOCX</p>
+                </div>
+                <button onclick="uploadDocuments('company1')" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition mb-2 w-full">
+                    Upload Documents
+                </button>
+                <button onclick="initializeClient('company1')" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition w-full">
+                    Initialize Client
+                </button>
+                <div id="company1Status" class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Status: <span id="company1State" class="font-semibold">Not Ready</span></p>
+                    <p class="text-sm text-gray-600">Documents: <span id="company1Docs" class="font-semibold">0</span></p>
+                </div>
+                <div id="company1Message" class="mt-4"></div>
+            </div>
+
+            <!-- Company 2 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">🏢 Company 2</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Upload Documents</label>
+                    <input type="file" id="company2Files" multiple accept=".pdf,.txt,.docx" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-sm text-gray-500 mt-2">Supported: PDF, TXT, DOCX</p>
+                </div>
+                <button onclick="uploadDocuments('company2')" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition mb-2 w-full">
+                    Upload Documents
+                </button>
+                <button onclick="initializeClient('company2')" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition w-full">
+                    Initialize Client
+                </button>
+                <div id="company2Status" class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Status: <span id="company2State" class="font-semibold">Not Ready</span></p>
+                    <p class="text-sm text-gray-600">Documents: <span id="company2Docs" class="font-semibold">0</span></p>
+                </div>
+                <div id="company2Message" class="mt-4"></div>
+            </div>
+        </div>
+
+        <!-- Federated Training -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">3️⃣ Federated Training</h2>
+            <p class="text-gray-600 mb-4">Train the global model using federated learning across both companies.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Learning Rate</label>
+                    <input type="number" id="learningRate" value="0.0001" step="0.0001" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Epochs</label>
+                    <input type="number" id="epochs" value="1" min="1" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Differential Privacy</label>
+                    <select id="useDP" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="startTraining()" id="trainButton"
+                    class="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg transition font-semibold">
+                Start Training Round
+            </button>
+            
+            <div id="trainingMessage" class="mt-4"></div>
+            
+            <!-- Training Progress -->
+            <div id="trainingProgress" class="mt-6 hidden">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">Training Progress</h3>
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <div class="loader mr-3"></div>
+                        <span id="progressText" class="text-gray-700">Training in progress...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query System -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">4️⃣ Query System</h2>
+            <p class="text-gray-600 mb-4">Test the trained RAG system by asking questions.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="md:col-span-2">
+                    <label class="block text-gray-700 font-semibold mb-2">Question</label>
+                    <input type="text" id="queryQuestion" placeholder="e.g., What is the leave policy?" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Company</label>
+                    <select id="queryCompany" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="company1">Company 1</option>
+                        <option value="company2">Company 2</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="querySystem()" 
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg transition font-semibold">
+                Ask Question
+            </button>
+            
+            <div id="queryResult" class="mt-6"></div>
+        </div>
+
+        <!-- Training History -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Training History</h2>
+            <button onclick="loadTrainingHistory()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition mb-4">
+                Load History
+            </button>
+            <div id="trainingHistory" class="overflow-x-auto">
+                <p class="text-gray-500">No training history yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Initialize System
+        async function initializeSystem() {
+            const retrieverModel = document.getElementById('retrieverModel').value;
+            const generatorModel = document.getElementById('generatorModel').value;
+            
+            showMessage('initMessage', `Initializing with ${retrieverModel.split('/')[1]} and ${generatorModel.split('/')[1]}...`, 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/initialize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        retriever_model: retrieverModel,
+                        generator_model: generatorModel
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showMessage('initMessage', `✓ ${data.message}<br>Retriever: ${data.retriever_model}<br>Generator: ${data.generator_model}`, 'success');
+                    refreshStatus();
+                } else {
+                    showMessage('initMessage', '✗ Initialization failed', 'error');
+                }
+            } catch (error) {
+                showMessage('initMessage', '✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Upload Documents
+        async function uploadDocuments(companyId) {
+            const fileInput = document.getElementById(`${companyId}Files`);
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                showMessage(`${companyId}Message`, '✗ Please select files to upload', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files', file);
+            }
+            
+            showMessage(`${companyId}Message`, `Uploading ${files.length} files...`, 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/upload-documents/${companyId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showMessage(`${companyId}Message`, `✓ ${data.message}`, 'success');
+                    fileInput.value = '';
+                } else {
+                    showMessage(`${companyId}Message`, '✗ Upload failed', 'error');
+                }
+            } catch (error) {
+                showMessage(`${companyId}Message`, '✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Initialize Client
+        async function initializeClient(companyId) {
+            showMessage(`${companyId}Message`, 'Initializing client...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/initialize-client/${companyId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showMessage(`${companyId}Message`, `✓ ${data.message}`, 'success');
+                    refreshStatus();
+                } else {
+                    showMessage(`${companyId}Message`, '✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage(`${companyId}Message`, '✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Start Training
+        async function startTraining() {
+            const learningRate = parseFloat(document.getElementById('learningRate').value);
+            const epochs = parseInt(document.getElementById('epochs').value);
+            const useDP = document.getElementById('useDP').value === 'true';
+            
+            const config = {
+                learning_rate: learningRate,
+                epochs: epochs,
+                use_dp: useDP,
+                dp_noise_multiplier: 0.1,
+                aggregation_method: 'fedavg'
+            };
+            
+            showMessage('trainingMessage', '', 'info');
+            document.getElementById('trainingProgress').classList.remove('hidden');
+            document.getElementById('trainButton').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/train`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                document.getElementById('trainingProgress').classList.add('hidden');
+                document.getElementById('trainButton').disabled = false;
+                
+                if (data.status === 'success') {
+                    showMessage('trainingMessage', 
+                        `✓ Training complete! Round ${data.round}, Avg Loss: ${data.avg_loss.toFixed(4)}`, 
+                        'success');
+                    refreshStatus();
+                    loadTrainingHistory();
+                } else {
+                    showMessage('trainingMessage', '✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                document.getElementById('trainingProgress').classList.add('hidden');
+                document.getElementById('trainButton').disabled = false;
+                showMessage('trainingMessage', '✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Query System
+        async function querySystem() {
+            const question = document.getElementById('queryQuestion').value.trim();
+            const companyId = document.getElementById('queryCompany').value;
+            
+            if (!question) {
+                showMessage('queryResult', '✗ Please enter a question', 'error');
+                return;
+            }
+            
+            showMessage('queryResult', 'Searching...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        company_id: companyId,
+                        top_k: 3
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayQueryResult(data);
+                } else {
+                    showMessage('queryResult', '✗ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('queryResult', '✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Display Query Result
+        function displayQueryResult(data) {
+            const resultDiv = document.getElementById('queryResult');
+            
+            let html = `
+                <div class="fade-in">
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4">
+                        <h3 class="font-bold text-gray-800 mb-2">Answer:</h3>
+                        <p class="text-gray-700">${data.answer}</p>
+                    </div>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+                        <h3 class="font-bold text-gray-800 mb-2">Sources:</h3>
+                        <div class="space-y-2">
+            `;
+            
+            data.sources.forEach((source, idx) => {
+                html += `
+                    <div class="bg-white p-3 rounded">
+                        <p class="text-sm text-gray-600 mb-1">
+                            <strong>Source ${idx + 1}:</strong> ${source.metadata.source}
+                        </p>
+                        <p class="text-sm text-gray-700">${source.text.substring(0, 200)}...</p>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
+        }
+
+        // Refresh Status
+        async function refreshStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('serverStatus').textContent = 
+                        data.server_initialized ? 'Initialized' : 'Not Initialized';
+                    document.getElementById('trainingRounds').textContent = data.current_round;
+                    
+                    let activeCount = 0;
+                    if (data.clients.company1 && data.clients.company1.is_ready) activeCount++;
+                    if (data.clients.company2 && data.clients.company2.is_ready) activeCount++;
+                    document.getElementById('activeClients').textContent = activeCount;
+                    
+                    // Update company statuses
+                    if (data.clients.company1) {
+                        document.getElementById('company1State').textContent = 
+                            data.clients.company1.is_ready ? 'Ready' : 'Not Ready';
+                        document.getElementById('company1Docs').textContent = 
+                            data.clients.company1.num_documents;
+                    }
+                    
+                    if (data.clients.company2) {
+                        document.getElementById('company2State').textContent = 
+                            data.clients.company2.is_ready ? 'Ready' : 'Not Ready';
+                        document.getElementById('company2Docs').textContent = 
+                            data.clients.company2.num_documents;
+                    }
+                }
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+
+        // Load Training History
+        async function loadTrainingHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/api/training-history`);
+                const data = await response.json();
+                
+                const historyDiv = document.getElementById('trainingHistory');
+                
+                if (data.history && data.history.length > 0) {
+                    let html = `
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-2">Round</th>
+                                    <th class="px-4 py-2">Clients</th>
+                                    <th class="px-4 py-2">Avg Loss</th>
+                                    <th class="px-4 py-2">Samples</th>
+                                    <th class="px-4 py-2">Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.history.forEach(round => {
+                        html += `
+                            <tr class="border-b">
+                                <td class="px-4 py-2">${round.round}</td>
+                                <td class="px-4 py-2">${round.num_clients}</td>
+                                <td class="px-4 py-2">${round.avg_loss.toFixed(4)}</td>
+                                <td class="px-4 py-2">${round.total_samples}</td>
+                                <td class="px-4 py-2">${new Date(round.timestamp).toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    historyDiv.innerHTML = html;
+                } else {
+                    historyDiv.innerHTML = '<p class="text-gray-500">No training history yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        // Show Message
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            const colors = {
+                success: 'bg-green-50 border-green-500 text-green-700',
+                error: 'bg-red-50 border-red-500 text-red-700',
+                info: 'bg-blue-50 border-blue-500 text-blue-700'
+            };
+            
+            if (message) {
+                element.innerHTML = `
+                    <div class="fade-in border-l-4 ${colors[type]} p-4 rounded">
+                        ${message}
+                    </div>
+                `;
+            } else {
+                element.innerHTML = '';
+            }
+        }
+
+        // Load status on page load
+        window.onload = () => {
+            refreshStatus();
+        };
+    </script>
+</body>
+</html>
