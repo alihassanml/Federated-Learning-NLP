@@ -1,6 +1,3 @@
-"""
-FastAPI Server for Federated RAG System
-"""
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
