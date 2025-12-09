@@ -51,24 +51,9 @@ class FederatedClient:
             return {'status': 'error', 'message': str(e)}
     
     def local_training(self, training_config):
-        """
-        Perform local training
-        
-        Args:
-            training_config: Dict with training parameters
-                - questions: List of training questions
-                - answers: List of training answers
-                - learning_rate: Learning rate (default 1e-4)
-                - epochs: Number of epochs (default 1)
-                - use_dp: Whether to use differential privacy (default True)
-                - dp_noise_multiplier: DP noise multiplier (default 0.1)
-        
-        Returns:
-            Dict with training results and model updates
-        """
         if not self.is_ready:
             return {'status': 'error', 'message': 'Client not initialized'}
-        
+
         try:
             questions = training_config.get('questions', [])
             answers = training_config.get('answers', [])
@@ -76,39 +61,39 @@ class FederatedClient:
             epochs = training_config.get('epochs', 1)
             use_dp = training_config.get('use_dp', True)
             dp_noise = training_config.get('dp_noise_multiplier', 0.1)
-            
+
             if not questions or not answers:
-                # Use default training data
                 questions, answers = self._generate_default_training_data()
-            
+
             print(f"\n{self.client_id}: Starting local training...")
             print(f"Training samples: {len(questions)}")
-            
-            # Train
+
+            # TRAIN STEP WITH ADAPTIVE DP
             loss = self.rag_pipeline.train_step(
                 questions=questions,
                 answers=answers,
                 learning_rate=learning_rate,
-                epochs=epochs
+                epochs=epochs,
+                dp_noise=dp_noise if use_dp else 0.0    # <---- FIXED
             )
-            
-            # Get model updates (only LoRA adapters)
+
+            # GET UPDATED LORA
             generator_updates = self.rag_pipeline.generator.get_trainable_state_dict()
-            
-            # Apply differential privacy if requested
+
+            # APPLY DP TO MODEL UPDATES (POST-TRAIN)
             if use_dp:
                 generator_updates = add_differential_privacy_noise(
                     generator_updates,
                     noise_multiplier=dp_noise
                 )
                 print(f"{self.client_id}: Applied differential privacy")
-            
-            # Record training
+
+            # RECORD TRAINING HISTORY
             self.training_history.append({
                 'loss': loss,
                 'num_samples': len(questions)
             })
-            
+
             return {
                 'status': 'success',
                 'client_id': self.client_id,
@@ -117,10 +102,11 @@ class FederatedClient:
                 'generator_updates': generator_updates,
                 'message': f'Training completed. Loss: {loss:.4f}'
             }
-            
+
         except Exception as e:
             print(f"Error in training: {e}")
             return {'status': 'error', 'message': str(e)}
+
     
     def _generate_default_training_data(self):
         """Generate default QA pairs from documents"""

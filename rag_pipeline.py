@@ -140,103 +140,79 @@ class RAGPipeline:
             'sources': retrieved_chunks
         }
     
-    def train_step(self, questions, answers, learning_rate=1e-4, epochs=1):
-        """
-        Local training step for federated learning
-        
-        Args:
-            questions: List of questions
-            answers: List of answers
-            learning_rate: Learning rate
-            epochs: Number of training epochs
-        
-        Returns:
-            Training loss
-        """
-        try:
-            self.generator.model.train()
-            
-            # Get trainable parameters
-            trainable_params = [p for p in self.generator.model.parameters() if p.requires_grad]
-            
-            if not trainable_params:
-                print("Warning: No trainable parameters found. Training skipped.")
-                return 0.0
-            
-            optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate)
-            
-            total_loss = 0
-            num_batches = 0
-            
-            for epoch in range(epochs):
-                for i in range(0, len(questions), 4):  # Batch size 4
-                    batch_questions = questions[i:i+4]
-                    batch_answers = answers[i:i+4]
-                    
-                    # Retrieve context for each question
-                    contexts = []
-                    for q in batch_questions:
-                        try:
-                            retrieved = self.retrieve(q, top_k=2)
-                            context = " ".join([chunk['text'][:200] for chunk in retrieved])
-                            contexts.append(context)
-                        except Exception as e:
-                            print(f"Retrieval error: {e}")
-                            contexts.append("")
-                    
-                    # Prepare inputs
-                    inputs = []
-                    for q, c in zip(batch_questions, contexts):
-                        inputs.append(f"Context: {c}\n\nQuestion: {q}\n\nAnswer:")
-                    
-                    # Tokenize
-                    input_encodings = self.generator.tokenizer(
-                        inputs,
-                        padding=True,
-                        truncation=True,
-                        max_length=512,
-                        return_tensors='pt'
-                    )
-                    
-                    target_encodings = self.generator.tokenizer(
-                        batch_answers,
-                        padding=True,
-                        truncation=True,
-                        max_length=128,
-                        return_tensors='pt'
-                    )
-                    
-                    # Move to device
-                    input_encodings = {k: v.to(self.generator.device) for k, v in input_encodings.items()}
-                    labels = target_encodings['input_ids'].to(self.generator.device)
-                    labels[labels == self.generator.tokenizer.pad_token_id] = -100
-                    
-                    # Forward pass
-                    outputs = self.generator.model(
-                        **input_encodings,
-                        labels=labels
-                    )
-                    
-                    loss = outputs.loss
-                    
-                    # Backward pass
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                    
-                    total_loss += loss.item()
-                    num_batches += 1
-            
-            avg_loss = total_loss / num_batches if num_batches > 0 else 0
-            print(f"Training completed. Average loss: {avg_loss:.4f}")
-            
-            return avg_loss
-            
-        except Exception as e:
-            print(f"Error in train_step: {e}")
-            import traceback
-            traceback.print_exc()
-            return 0.0
+    def train_step(self, questions, answers, learning_rate, epochs, dp_noise=0.0):
+
+        self.generator.model.train()
+        trainable_params = [p for p in self.generator.model.parameters() if p.requires_grad]
+
+        optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate)
+
+        total_loss = 0
+        num_batches = 0
+
+        for epoch in range(epochs):
+
+            for i in range(0, len(questions), 4):
+                batch_questions = questions[i:i+4]
+                batch_answers = answers[i:i+4]
+
+                # Retrieve contexts
+                contexts = []
+                for q in batch_questions:
+                    try:
+                        retrieved = self.retrieve(q, top_k=2)
+                        context = " ".join([chunk["text"][:200] for chunk in retrieved])
+                    except:
+                        context = ""
+                    contexts.append(context)
+
+                # Prepare inputs
+                inputs = [f"Context: {c}\n\nQuestion: {q}\n\nAnswer:" 
+                        for q, c in zip(batch_questions, contexts)]
+
+                input_encodings = self.generator.tokenizer(
+                    inputs,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt"
+                )
+
+                target_encodings = self.generator.tokenizer(
+                    batch_answers,
+                    padding=True,
+                    truncation=True,
+                    max_length=128,
+                    return_tensors="pt"
+                )
+
+                input_encodings = {k: v.to(self.generator.device) for k, v in input_encodings.items()}
+                labels = target_encodings["input_ids"].to(self.generator.device)
+                labels[labels == self.generator.tokenizer.pad_token_id] = -100
+
+                # Forward
+                outputs = self.generator.model(**input_encodings, labels=labels)
+                loss = outputs.loss
+
+                # Backward
+                optimizer.zero_grad()
+                loss.backward()
+
+                # APPLY DP NOISE TO GRADIENTS AFTER backward()
+                if dp_noise > 0:
+                    for p in trainable_params:
+                        if p.grad is not None:
+                            p.grad += torch.randn_like(p.grad) * dp_noise
+
+                optimizer.step()
+
+                total_loss += loss.item()
+                num_batches += 1
+
+        avg_loss = total_loss / num_batches if num_batches > 0 else 0
+        print(f"Training completed. Average loss: {avg_loss:.4f}")
+        return avg_loss
+
     
     def _create_sample_data(self):
         """Create sample documents if none exist"""

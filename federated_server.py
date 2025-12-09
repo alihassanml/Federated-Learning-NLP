@@ -6,6 +6,9 @@ import copy
 from models import aggregate_model_weights, RetrieverModel, GeneratorModel
 import json
 from datetime import datetime
+from adaptive_privacy import AdaptivePrivacy
+
+
 
 class FederatedServer:
     """Central server for federated learning aggregation"""
@@ -16,22 +19,24 @@ class FederatedServer:
         self.round_number = 0
         self.training_history = []
         self.is_initialized = False
+        self.privacy_controller = AdaptivePrivacy(base_noise=0.1, min_noise=0.01, decay=0.95)
+
     
     def initialize_global_model(self):
-        """Initialize global models"""
         print("Initializing global models...")
         
         self.global_retriever = RetrieverModel()
         self.global_generator = GeneratorModel(use_lora=True)
-        
+
         self.is_initialized = True
-        
+
         return {
             'status': 'success',
             'message': 'Global models initialized',
             'retriever_model': self.global_retriever.model_name,
             'generator_model': self.global_generator.model_name
         }
+
     
     def get_global_model_state(self):
         """Get current global model state"""
@@ -146,6 +151,10 @@ class FederatedServer:
         # Local training on each client
         print("\n2. Local training on clients...")
         client_updates = []
+
+        adaptive_noise = self.privacy_controller.get_noise_multiplier(self.round_number)
+        training_config["dp_noise_multiplier"] = adaptive_noise
+        print(f"Adaptive DP Noise for round {self.round_number + 1}: {adaptive_noise}")
         
         for client_id, client in clients.items():
             if client.is_ready:
@@ -166,8 +175,9 @@ class FederatedServer:
         )
         
         if aggregation_result['status'] == 'success':
-            print(f"   ✓ Aggregation successful")
-            print(f"   Average Loss: {aggregation_result['avg_loss']:.4f}")
+            avg_loss = aggregation_result['avg_loss']
+            self.privacy_controller.update_loss(avg_loss)   # <--- IMPORTANT
+            print(f"[Adaptive DP] Updated noise schedule using avg_loss={avg_loss}")
         else:
             print(f"   ✗ Aggregation failed: {aggregation_result['message']}")
         
