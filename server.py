@@ -77,7 +77,7 @@ async def get_available_models():
                 "embedding_dim": 384,
                 "speed": "Fast",
                 "quality": "⭐⭐⭐⭐",
-                "recommended": True
+                "recommended": False
             },
             {
                 "id": "mpnet",
@@ -87,7 +87,7 @@ async def get_available_models():
                 "embedding_dim": 768,
                 "speed": "Medium",
                 "quality": "⭐⭐⭐⭐⭐",
-                "recommended": False
+                "recommended": True
             },
             {
                 "id": "multilingual",
@@ -98,7 +98,9 @@ async def get_available_models():
                 "speed": "Slow",
                 "quality": "⭐⭐⭐⭐⭐",
                 "recommended": False
-            }
+            },
+            
+            
         ],
         "generator_models": [
             {
@@ -108,7 +110,7 @@ async def get_available_models():
                 "parameters": "80M",
                 "speed": "Fast",
                 "quality": "⭐⭐⭐⭐",
-                "recommended": True
+                "recommended": False
             },
             {
                 "id": "flan-t5-base",
@@ -117,7 +119,7 @@ async def get_available_models():
                 "parameters": "250M",
                 "speed": "Medium",
                 "quality": "⭐⭐⭐⭐⭐",
-                "recommended": False
+                "recommended": True
             },
             {
                 "id": "flan-t5-large",
