@@ -48,8 +48,8 @@ class TrainingConfig(BaseModel):
     answers: Optional[List[str]] = None
 
 class InitializeRequest(BaseModel):
-    retriever_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    generator_model: str = "google/flan-t5-small"
+    retriever_model: str = "sentence-transformers/all-mpnet-base-v2"
+    generator_model: str = "google/flan-t5-base"
 
 class QueryRequest(BaseModel):
     question: str

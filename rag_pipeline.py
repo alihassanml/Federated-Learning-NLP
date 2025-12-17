@@ -30,12 +30,12 @@ class RAGDataset(Dataset):
 class RAGPipeline:
     """Complete RAG pipeline with retrieval and generation"""
     
-    def __init__(self, company_id, data_folder, retriever_model='sentence-transformers/all-MiniLM-L6-v2', 
-                 generator_model='google/flan-t5-small'):
+    def __init__(self, company_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2', 
+                 generator_model='google/flan-t5-base'):
         self.company_id = company_id
         self.data_folder = data_folder
         self.retriever = RetrieverModel(retriever_model)
-        self.generator = GeneratorModel(generator_model)
+        self.generator = GeneratorModel(generator_model, use_lora=True)
         
         self.index = None
         self.chunks = []
@@ -140,51 +140,62 @@ class RAGPipeline:
             'sources': retrieved_chunks
         }
     
-    def train_step(self, questions, answers, learning_rate, epochs, dp_noise=0.0):
+    def train_step(self, questions, answers, learning_rate, epochs, dp_noise=0.0, batch_size=16, round_number=0):
+        """
+        Training step for the generator model with optional Differential Privacy (DP)
+        Args:
+            questions (list[str]): List of questions
+            answers (list[str]): List of answers
+            learning_rate (float): Learning rate
+            epochs (int): Number of epochs
+            dp_noise (float): DP noise multiplier
+            batch_size (int): Batch size
+            round_number (int): Current federated round (for optional warm-up)
+        Returns:
+            avg_loss (float): Average loss over all epochs and batches
+        """
+        import random
+        import torch
 
         self.generator.model.train()
         trainable_params = [p for p in self.generator.model.parameters() if p.requires_grad]
-
         optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate)
 
         total_loss = 0
-        num_batches = 0
+        num_batches_total = 0
+
+        # OPTIONAL: warm-up rounds without DP
+        if round_number < 3:
+            dp_noise = 0.0
 
         for epoch in range(epochs):
+            # Shuffle data each epoch
+            combined = list(zip(questions, answers))
+            random.shuffle(combined)
+            questions_shuffled, answers_shuffled = zip(*combined)
 
-            for i in range(0, len(questions), 4):
-                batch_questions = questions[i:i+4]
-                batch_answers = answers[i:i+4]
+            epoch_loss = 0
+            num_batches = 0
+
+            for i in range(0, len(questions_shuffled), batch_size):
+                batch_questions = questions_shuffled[i:i+batch_size]
+                batch_answers = answers_shuffled[i:i+batch_size]
 
                 # Retrieve contexts
                 contexts = []
                 for q in batch_questions:
                     try:
-                        retrieved = self.retrieve(q, top_k=2)
-                        context = " ".join([chunk["text"][:200] for chunk in retrieved])
+                        retrieved = self.retrieve(q, top_k=5)
+                        context = " ".join([chunk["text"] for chunk in retrieved])
+                        context = context[:800]  # max 800 chars
                     except:
                         context = ""
                     contexts.append(context)
 
-                # Prepare inputs
-                inputs = [f"Context: {c}\n\nQuestion: {q}\n\nAnswer:" 
-                        for q, c in zip(batch_questions, contexts)]
-
-                input_encodings = self.generator.tokenizer(
-                    inputs,
-                    padding=True,
-                    truncation=True,
-                    max_length=512,
-                    return_tensors="pt"
-                )
-
-                target_encodings = self.generator.tokenizer(
-                    batch_answers,
-                    padding=True,
-                    truncation=True,
-                    max_length=128,
-                    return_tensors="pt"
-                )
+                # Prepare inputs and labels
+                inputs = [f"Context: {c}\n\nQuestion: {q}\n\nAnswer:" for q, c in zip(batch_questions, contexts)]
+                input_encodings = self.generator.tokenizer(inputs, padding=True, truncation=True, max_length=512, return_tensors="pt")
+                target_encodings = self.generator.tokenizer(batch_answers, padding=True, truncation=True, max_length=128, return_tensors="pt")
 
                 input_encodings = {k: v.to(self.generator.device) for k, v in input_encodings.items()}
                 labels = target_encodings["input_ids"].to(self.generator.device)
@@ -198,20 +209,34 @@ class RAGPipeline:
                 optimizer.zero_grad()
                 loss.backward()
 
-                # APPLY DP NOISE TO GRADIENTS AFTER backward()
+                # DP per-batch gradient noise
                 if dp_noise > 0:
                     for p in trainable_params:
                         if p.grad is not None:
+                            # gradient clipping
+                            norm = torch.norm(p.grad)
+                            clip_norm = 1.0
+                            if norm > clip_norm:
+                                p.grad *= (clip_norm / norm)
+                            # add Gaussian noise
                             p.grad += torch.randn_like(p.grad) * dp_noise
 
                 optimizer.step()
 
-                total_loss += loss.item()
+                epoch_loss += loss.item()
                 num_batches += 1
 
-        avg_loss = total_loss / num_batches if num_batches > 0 else 0
-        print(f"Training completed. Average loss: {avg_loss:.4f}")
+            avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0
+            print(f"Epoch {epoch+1}/{epochs}, Average Loss: {avg_epoch_loss:.4f}")
+
+            total_loss += epoch_loss
+            num_batches_total += num_batches
+
+        avg_loss = total_loss / num_batches_total if num_batches_total > 0 else 0
+        print(f"Training completed. Overall Average Loss: {avg_loss:.4f}")
         return avg_loss
+
+
 
     
     def _create_sample_data(self):

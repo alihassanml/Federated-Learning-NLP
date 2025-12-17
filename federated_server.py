@@ -50,64 +50,97 @@ class FederatedServer:
     
     def aggregate_client_updates(self, client_updates, aggregation_method='fedavg'):
         """
-        Aggregate updates from multiple clients
-        
+        Aggregate updates from multiple clients (Weighted FedAvg / FedProx safe)
+
         Args:
-            client_updates: List of dicts with 'generator_updates' and metadata
-            aggregation_method: Aggregation strategy ('fedavg' or 'fedprox')
-        
-        Returns:
-            Dict with aggregation results
+            client_updates: List of dicts returned by clients
+            aggregation_method: 'fedavg' or 'fedprox'
         """
         if not self.is_initialized:
             return {'status': 'error', 'message': 'Server not initialized'}
-        
+
         if not client_updates:
             return {'status': 'error', 'message': 'No client updates provided'}
-        
+
         try:
             print(f"\n=== Federated Aggregation Round {self.round_number + 1} ===")
-            print(f"Aggregating updates from {len(client_updates)} clients")
-            
-            # Extract generator updates
-            generator_updates = [
-                update['generator_updates']
-                for update in client_updates
-                if 'generator_updates' in update
-            ]
-            
+            print(f"Received updates from {len(client_updates)} clients")
+
+            # --------------------------------------------------
+            # 1️⃣ Filter VALID client updates only
+            # --------------------------------------------------
+            valid_clients = []
+            generator_updates = []
+            client_weights = []
+
+            for update in client_updates:
+                if (
+                    'generator_updates' not in update
+                    or update['generator_updates'] is None
+                    or len(update['generator_updates']) == 0
+                ):
+                    print(
+                        f"Skipping client {update.get('client_id', 'unknown')} "
+                        f"— missing generator_updates"
+                    )
+                    continue
+
+                valid_clients.append(update)
+                generator_updates.append(update['generator_updates'])
+                client_weights.append(update.get('num_samples', 1))
+
             if not generator_updates:
-                return {'status': 'error', 'message': 'No valid updates to aggregate'}
-            
-            # Aggregate
-            aggregated_generator = aggregate_model_weights(
-                generator_updates,
-                aggregation_method=aggregation_method
-            )
-            
-            # Update global model
-            self.global_generator.load_adapter_state_dict(aggregated_generator)
-            
-            # Record round info
-            avg_loss = sum(u.get('loss', 0) for u in client_updates) / len(client_updates)
-            total_samples = sum(u.get('num_samples', 0) for u in client_updates)
-            
+                return {
+                    'status': 'error',
+                    'message': 'No valid generator updates to aggregate'
+                }
+
+            print(f"Valid clients for aggregation: {len(generator_updates)}")
+
+            # --------------------------------------------------
+            # 2️⃣ Weighted Federated Averaging
+            # --------------------------------------------------
+            total_samples = sum(client_weights)
+            aggregated_state = {}
+
+            for key in generator_updates[0].keys():
+                aggregated_state[key] = torch.zeros_like(
+                    generator_updates[0][key]
+                )
+
+                for client_state, weight in zip(generator_updates, client_weights):
+                    aggregated_state[key] += (
+                        client_state[key] * (weight / total_samples)
+                    )
+
+            # --------------------------------------------------
+            # 3️⃣ Update global generator (LoRA adapters)
+            # --------------------------------------------------
+            self.global_generator.load_adapter_state_dict(aggregated_state)
+
+            # --------------------------------------------------
+            # 4️⃣ Metrics & bookkeeping
+            # --------------------------------------------------
+            avg_loss = sum(
+                u['loss'] * u['num_samples'] for u in valid_clients
+            ) / total_samples
+
             round_info = {
                 'round': self.round_number + 1,
                 'timestamp': datetime.now().isoformat(),
-                'num_clients': len(client_updates),
+                'num_clients': len(valid_clients),
                 'avg_loss': avg_loss,
                 'total_samples': total_samples,
                 'aggregation_method': aggregation_method
             }
-            
+
             self.training_history.append(round_info)
             self.round_number += 1
-            
-            print(f"Round {self.round_number} completed")
-            print(f"Average loss: {avg_loss:.4f}")
+
+            print(f"Round {self.round_number} aggregation successful")
+            print(f"Weighted avg loss: {avg_loss:.4f}")
             print(f"Total samples: {total_samples}")
-            
+
             return {
                 'status': 'success',
                 'round': self.round_number,
@@ -115,10 +148,11 @@ class FederatedServer:
                 'total_samples': total_samples,
                 'message': f'Round {self.round_number} aggregation successful'
             }
-            
+
         except Exception as e:
             print(f"Error in aggregation: {e}")
             return {'status': 'error', 'message': str(e)}
+
     
     def federated_training_round(self, clients, training_config):
         """

@@ -11,8 +11,8 @@ import os
 class FederatedClient:
     """Represents a client (company) in federated learning"""
     
-    def __init__(self, client_id, data_folder, retriever_model='sentence-transformers/all-MiniLM-L6-v2',
-                 generator_model='google/flan-t5-small'):
+    def __init__(self, client_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2',
+                 generator_model='google/flan-t5-base'):
         self.client_id = client_id
         self.data_folder = data_folder
         self.rag_pipeline = RAGPipeline(client_id, data_folder, retriever_model, generator_model)
@@ -68,14 +68,18 @@ class FederatedClient:
             print(f"\n{self.client_id}: Starting local training...")
             print(f"Training samples: {len(questions)}")
 
-            # TRAIN STEP WITH ADAPTIVE DP
-            loss = self.rag_pipeline.train_step(
-                questions=questions,
-                answers=answers,
-                learning_rate=learning_rate,
-                epochs=epochs,
-                dp_noise=dp_noise if use_dp else 0.0    # <---- FIXED
-            )
+            epoch_losses = []
+
+            for epoch in range(epochs):
+                loss = self.rag_pipeline.train_step(
+                    questions=questions,
+                    answers=answers,
+                    learning_rate=learning_rate,
+                    epochs=1,  # train one epoch at a time
+                    dp_noise=dp_noise if use_dp else 0.0
+                )
+                epoch_losses.append(loss)
+                print(f"   Epoch {epoch+1}/{epochs}, Loss: {loss:.4f}")
 
             # GET UPDATED LORA
             generator_updates = self.rag_pipeline.generator.get_trainable_state_dict()
@@ -90,22 +94,25 @@ class FederatedClient:
 
             # RECORD TRAINING HISTORY
             self.training_history.append({
-                'loss': loss,
-                'num_samples': len(questions)
+                'loss': epoch_losses[-1],
+                'num_samples': len(questions),
+                'epoch_losses': epoch_losses
             })
 
             return {
                 'status': 'success',
                 'client_id': self.client_id,
-                'loss': loss,
+                'loss': epoch_losses[-1],
+                'epoch_losses': epoch_losses,  # send back full epoch info
                 'num_samples': len(questions),
                 'generator_updates': generator_updates,
-                'message': f'Training completed. Loss: {loss:.4f}'
+                'message': f'Training completed. Loss: {epoch_losses[-1]:.4f}'
             }
 
         except Exception as e:
             print(f"Error in training: {e}")
             return {'status': 'error', 'message': str(e)}
+
 
     
     def _generate_default_training_data(self):
@@ -185,8 +192,8 @@ class ClientManager:
     def __init__(self):
         self.clients = {}
     
-    def register_client(self, client_id, data_folder, retriever_model='sentence-transformers/all-MiniLM-L6-v2',
-                       generator_model='google/flan-t5-small'):
+    def register_client(self, client_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2',
+                       generator_model='google/flan-t5-base'):
         """Register a new client"""
         if client_id in self.clients:
             return {'status': 'error', 'message': 'Client already registered'}

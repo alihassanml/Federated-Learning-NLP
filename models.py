@@ -18,7 +18,7 @@ class RetrieverModel:
         'multilingual': 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'  # Multilingual, 278M params
     }
     
-    def __init__(self, model_name='sentence-transformers/all-MiniLM-L6-v2'):
+    def __init__(self, model_name='sentence-transformers/all-mpnet-base-v2'):
         self.model_name = model_name
         self.model = SentenceTransformer(model_name)
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
@@ -56,7 +56,7 @@ class GeneratorModel:
         'flan-t5-large': 'google/flan-t5-large'     # 780M params
     }
     
-    def __init__(self, model_name='google/flan-t5-small', use_lora=True):
+    def __init__(self, model_name='google/flan-t5-base', use_lora=True):
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
@@ -158,30 +158,22 @@ class GeneratorModel:
         self.model.to(self.device)
 
 
-def aggregate_model_weights(client_weights, aggregation_method='fedavg'):
-    """
-    Aggregate model weights from multiple clients
-    
-    Args:
-        client_weights: List of state dicts from clients
-        aggregation_method: 'fedavg' or 'fedprox'
-    
-    Returns:
-        Aggregated state dict
-    """
-    if not client_weights:
+def aggregate_model_weights(client_updates, aggregation_method='fedavg'):
+    if not client_updates:
         return None
     
-    # FedAvg: Simple averaging
     aggregated = {}
+    total_samples = sum(u.get('num_samples', 1) for u in client_updates)
     
-    for key in client_weights[0].keys():
-        # Stack all client weights for this parameter
-        stacked = torch.stack([client[key].float() for client in client_weights])
-        # Average across clients
-        aggregated[key] = torch.mean(stacked, dim=0)
+    for key in client_updates[0]['generator_updates'].keys():
+        weighted_sum = 0
+        for u in client_updates:
+            weight = u['num_samples'] / total_samples
+            weighted_sum = weighted_sum + u['generator_updates'][key].float() * weight if key in u['generator_updates'] else weighted_sum
+        aggregated[key] = weighted_sum
     
     return aggregated
+
 
 
 def add_differential_privacy_noise(state_dict, noise_multiplier=0.1, clip_norm=1.0):
