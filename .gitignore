@@ -1,4 +1,7 @@
 __pycache__/
 __pycache__
-company2/
-company1/
+models/*
+!models/.gitkeep
+
+data/*
+!data/.gitkeep
