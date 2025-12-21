@@ -10,16 +10,63 @@ from typing import List, Dict
 import json
 import re
 
-def extract_text_from_pdf(pdf_path):
-    """Extract text from PDF file"""
+def extract_text_from_pdf(pdf_path, use_multimodal=True):
+    # Extract text from PDF file (with optional multimodal support)
+    
+    # Args:
+    #     pdf_path: Path to PDF file
+    #     use_multimodal: If True, use advanced parsing (tables, images, OCR)
+    #                    If False, use simple text extraction
+
     text = ""
+    
     try:
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
+        if use_multimodal:
+            # Use multimodal parser
+            from multimodal_parser import MultimodalPDFParser
+            
+            parser = MultimodalPDFParser()
+            result = parser.parse_pdf(
+                pdf_path,
+                extract_images=True,
+                extract_tables=True,
+                ocr_images=True
+            )
+            
+            # Combine all text
+            text = result['text']
+            
+            # Add table representations
+            for table_info in result['tables']:
+                text += f"\n\n{table_info['text_representation']}\n\n"
+            
+            # Add image OCR text
+            for img_info in result['images']:
+                if 'ocr_text' in img_info and img_info['ocr_text']:
+                    text += f"\n[Image Content]: {img_info['ocr_text']}\n"
+            
+            print(f"  ✓ Multimodal extraction: {len(result['tables'])} tables, "
+                  f"{len(result['images'])} images")
+        else:
+            # Simple text extraction (original method)
+            with open(pdf_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+    
     except Exception as e:
         print(f"Error reading PDF {pdf_path}: {e}")
+        print(f"Falling back to simple extraction...")
+        
+        # Fallback to simple extraction
+        try:
+            with open(pdf_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+        except Exception as e2:
+            print(f"Simple extraction also failed: {e2}")
+    
     return text
 
 def extract_text_from_docx(docx_path):
@@ -41,13 +88,15 @@ def extract_text_from_txt(txt_path):
         print(f"Error reading TXT {txt_path}: {e}")
         return ""
 
-def load_documents_from_folder(folder_path):
-    """
-    Load all documents from a folder
+def load_documents_from_folder(folder_path, use_multimodal=True):
+    # Load all documents from a folder
     
-    Returns:
-        List of dicts with 'text' and 'source' keys
-    """
+    # Args:
+    #     folder_path: Path to folder containing documents
+    #     use_multimodal: If True, use advanced PDF parsing
+        
+    # Returns:
+    #     List of dicts with 'text' and 'source' keys
     documents = []
     
     if not os.path.exists(folder_path):
@@ -62,7 +111,7 @@ def load_documents_from_folder(folder_path):
         
         text = ""
         if filename.endswith('.pdf'):
-            text = extract_text_from_pdf(file_path)
+            text = extract_text_from_pdf(file_path, use_multimodal=use_multimodal)
         elif filename.endswith('.docx'):
             text = extract_text_from_docx(file_path)
         elif filename.endswith('.txt'):
@@ -71,7 +120,8 @@ def load_documents_from_folder(folder_path):
         if text.strip():
             documents.append({
                 'text': text,
-                'source': filename
+                'source': filename,
+                'type': 'multimodal' if use_multimodal and filename.endswith('.pdf') else 'text'
             })
     
     print(f"Loaded {len(documents)} documents from {folder_path}")

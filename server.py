@@ -29,7 +29,9 @@ templates = Jinja2Templates(directory="frontend/templates")
 
 # Initialize managers
 client_manager = ClientManager()
+active_companies = []  # Track dynamically added companies
 fed_server = FederatedServer()
+
 
 # Create data directories
 os.makedirs("data/company1", exist_ok=True)
@@ -133,6 +135,116 @@ async def get_available_models():
         ]
     }
 
+@app.get("/api/companies")
+async def get_companies():
+    """Get list of all registered companies"""
+    try:
+        all_clients = client_manager.get_all_clients()
+        companies_list = []
+        
+        for company_id, client in all_clients.items():
+            companies_list.append({
+                'id': company_id,
+                'is_ready': client.is_ready,
+                'num_documents': len(client.rag_pipeline.chunks) if client.is_ready else 0,
+                'data_folder': client.data_folder
+            })
+        
+        return {
+            'status': 'success',
+            'companies': companies_list,
+            'total_companies': len(companies_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/add-company")
+async def add_company(company_name: str = Form(...)):
+    """Add a new company dynamically"""
+    try:
+        # Sanitize company name
+        company_id = company_name.lower().replace(' ', '_')
+        company_id = ''.join(c for c in company_id if c.isalnum() or c == '_')
+        
+        # Check if already exists
+        if company_id in client_manager.clients:
+            return {
+                'status': 'error',
+                'message': f'Company {company_name} already exists'
+            }
+        
+        # Create data folder
+        data_folder = f"data/{company_id}"
+        os.makedirs(data_folder, exist_ok=True)
+        
+        # Register client
+        result = client_manager.register_client(
+            company_id, 
+            data_folder,
+            retriever_model='sentence-transformers/all-mpnet-base-v2',
+            generator_model='google/flan-t5-base'
+        )
+        
+        if result['status'] == 'success':
+            active_companies.append(company_id)
+            return {
+                'status': 'success',
+                'company_id': company_id,
+                'company_name': company_name,
+                'message': f'Company {company_name} added successfully'
+            }
+        else:
+            return result
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== SECTION 4 ====================
+# LOCATION: After the @app.post("/api/add-company") endpoint
+# ADD THIS NEW ENDPOINT:
+
+@app.delete("/api/remove-company/{company_id}")
+async def remove_company(company_id: str):
+    """Remove a company (but keep minimum 1)"""
+    try:
+        all_clients = client_manager.get_all_clients()
+        
+        # Check minimum requirement
+        if len(all_clients) <= 1:
+            return {
+                'status': 'error',
+                'message': 'Cannot remove last company. Minimum 1 company required.'
+            }
+        
+        # Check if exists
+        if company_id not in all_clients:
+            return {
+                'status': 'error',
+                'message': f'Company {company_id} not found'
+            }
+        
+        # Remove from client manager
+        del client_manager.clients[company_id]
+        
+        # Remove from active list
+        if company_id in active_companies:
+            active_companies.remove(company_id)
+        
+        return {
+            'status': 'success',
+            'message': f'Company {company_id} removed successfully'
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
@@ -217,37 +329,79 @@ async def initialize_client(company_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/train")
-async def start_training(config: TrainingConfig):
-    """Start federated training round"""
+
+
+@app.post("/api/initialize-client-multimodal/{company_id}")
+async def initialize_client_multimodal(company_id: str, use_multimodal: bool = True):
+    # \"\"\"Initialize a client with multimodal PDF support\"\"\"
     try:
-        # Ensure clients are initialized
-        for client_id in ["company1", "company2"]:
-            if client_id not in client_manager.clients:
-                client_manager.register_client(client_id, f"data/{client_id}")
-            
-            client = client_manager.get_client(client_id)
-            if not client.is_ready:
-                init_result = client.initialize()
-                if init_result['status'] != 'success':
-                    return {
-                        "status": "error",
-                        "message": f"Failed to initialize {client_id}: {init_result['message']}"
-                    }
+        if company_id not in ["company1", "company2"] and company_id not in client_manager.clients:
+            raise HTTPException(status_code=400, detail="Invalid company ID")
         
-        # Convert config to dict
-        training_config = config.model_dump()
+        # Register if not already registered
+        if company_id not in client_manager.clients:
+            client_manager.register_client(company_id, f"data/{company_id}")
         
-        # Execute federated training round
-        result = fed_server.federated_training_round(
-            client_manager.get_all_clients(),
-            training_config
-        )
+        # Initialize with multimodal support
+        client = client_manager.get_client(company_id)
+        client.rag_pipeline.use_multimodal = use_multimodal
+        
+        result = client.initialize()
+        
+        if result['status'] == 'success':
+            result['multimodal_enabled'] = use_multimodal
         
         return result
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.post("/api/train")
+async def start_training(config: TrainingConfig):
+    """Start federated training round with dynamic companies"""
+    try:
+        # Get all active clients
+        all_clients = client_manager.get_all_clients()
+        
+        if len(all_clients) == 0:
+            return {
+                'status': 'error',
+                'message': 'No companies registered. Please add at least one company.'
+            }
+        
+        # Ensure all clients are initialized
+        for client_id, client in all_clients.items():
+            if not client.is_ready:
+                init_result = client.initialize()
+                if init_result['status'] != 'success':
+                    return {
+                        'status': 'error',
+                        'message': f'Failed to initialize {client_id}: {init_result["message"]}'
+                    }
+        
+        # Convert config to dict
+        training_config = config.model_dump()
+        
+        # Execute federated training round with all active clients
+        result = fed_server.federated_training_round(
+            all_clients,  # Pass all clients dynamically
+            training_config
+        )
+        
+        # Add info about participating clients
+        result['participating_clients'] = list(all_clients.keys())
+        result['num_participating_clients'] = len(all_clients)
+        
+        return result
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 
 @app.post("/api/query")
 async def query_system(request: QueryRequest):
@@ -314,27 +468,40 @@ async def load_model():
 
 @app.delete("/api/reset")
 async def reset_system():
-    """Reset the entire system"""
+    global client_manager, fed_server, active_companies
+
     try:
+        # Get all company folders
+        all_clients = client_manager.get_all_clients()
+        
         # Clear data folders
-        for company_id in ["company1", "company2"]:
+        for company_id in all_clients.keys():
             folder = f"data/{company_id}"
             if os.path.exists(folder):
                 for file in os.listdir(folder):
-                    os.remove(os.path.join(folder, file))
+                    file_path = os.path.join(folder, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
         
-        # Reinitialize
-        global client_manager, fed_server
+        # Reinitialize global state
         client_manager = ClientManager()
         fed_server = FederatedServer()
+        active_companies = []
+        
+        # Recreate default company
+        os.makedirs("data/company1", exist_ok=True)
         
         return {
-            "status": "success",
-            "message": "System reset successfully"
+            'status': 'success',
+            'message': 'System reset successfully. Add companies to start.'
         }
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 
 # Run server
 if __name__ == "__main__":

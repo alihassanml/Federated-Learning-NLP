@@ -278,18 +278,29 @@
                     Refresh
                 </button>
             </div>
-            <div id="systemStatus" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="stat-card p-5">
-                    <p class="stat-label mb-2">Server Status</p>
-                    <p id="serverStatus" class="stat-value">Offline</p>
+            <div class="card p-8 mb-8 fade-in">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+                    <div>
+                        <h2 class="section-title">System Status</h2>
+                        <p class="section-subtitle mt-1">Monitor your federated learning system</p>
+                    </div>
+                    <button onclick="refreshStatus()" class="btn-secondary px-5 py-2.5 rounded-lg text-sm mt-4 md:mt-0">
+                        Refresh
+                    </button>
                 </div>
-                <div class="stat-card p-5">
-                    <p class="stat-label mb-2">Training Rounds</p>
-                    <p id="trainingRounds" class="stat-value">0</p>
-                </div>
-                <div class="stat-card p-5">
-                    <p class="stat-label mb-2">Active Clients</p>
-                    <p id="activeClients" class="stat-value">0</p>
+                <div id="systemStatus" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Server Status</p>
+                        <p id="serverStatus" class="stat-value">Offline</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Training Rounds</p>
+                        <p id="trainingRounds" class="stat-value">0</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Active Companies</p>
+                        <p id="activeClients" class="stat-value">0</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -305,7 +316,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Retriever Model</label>
                     <select id="retrieverModel" class="select-field w-full px-4 py-3 rounded-lg text-sm">
-                        <option value="sentence-transformers/all-MiniLM-L6-v2" >
+                        <option value="sentence-transformers/all-MiniLM-L6-v2">
                             all-MiniLM-L6-v2 (23M) - Fast
                         </option>
                         <option value="sentence-transformers/all-mpnet-base-v2" selected>
@@ -320,7 +331,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Generator Model</label>
                     <select id="generatorModel" class="select-field w-full px-4 py-3 rounded-lg text-sm">
-                        <option value="google/flan-t5-small" >
+                        <option value="google/flan-t5-small">
                             Flan-T5-Small (80M) - Fast
                         </option>
                         <option value="google/flan-t5-base" selected>
@@ -339,68 +350,46 @@
             <div id="initMessage" class="mt-5"></div>
         </div>
 
-        <!-- Company Data Upload -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Company 1 -->
-            <div class="card p-8 fade-in">
-                <div class="company-card-header">
-                    <h2 class="section-title">Company 1</h2>
-                </div>
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Documents</label>
-                    <input type="file" id="company1Files" multiple accept=".pdf,.txt,.docx"
-                        class="input-field w-full px-4 py-3 rounded-lg text-sm">
-                </div>
-                <div class="flex gap-3 mb-5">
-                    <button onclick="uploadDocuments('company1')" class="btn-primary flex-1 py-3 rounded-lg text-sm">
-                        Upload
-                    </button>
-                    <button onclick="initializeClient('company1')" class="btn-secondary flex-1 py-3 rounded-lg text-sm">
-                        Initialize
-                    </button>
-                </div>
-                <div id="company1Status" class="stat-card p-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Status</span>
-                        <span id="company1State" class="text-sm font-semibold">Not Ready</span>
-                    </div>
-                    <div class="flex justify-between items-center mt-2">
-                        <span class="text-sm text-gray-600">Documents</span>
-                        <span id="company1Docs" class="text-sm font-semibold">0</span>
-                    </div>
-                </div>
-                <div id="company1Message" class="mt-5"></div>
+        <!-- Company Management -->
+        <div class="card p-8 mb-8 fade-in">
+            <div class="mb-8">
+                <h2 class="section-title">Company Management</h2>
+                <p class="section-subtitle mt-1">Add or remove companies dynamically</p>
             </div>
 
-            <!-- Company 2 -->
-            <div class="card p-8 fade-in">
-                <div class="company-card-header">
-                    <h2 class="section-title">Company 2</h2>
-                </div>
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Documents</label>
-                    <input type="file" id="company2Files" multiple accept=".pdf,.txt,.docx"
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                    <input type="text" id="newCompanyName"
+                        placeholder="Enter company name (e.g., Company 3, Hospital A)"
                         class="input-field w-full px-4 py-3 rounded-lg text-sm">
                 </div>
-                <div class="flex gap-3 mb-5">
-                    <button onclick="uploadDocuments('company2')" class="btn-primary flex-1 py-3 rounded-lg text-sm">
-                        Upload
-                    </button>
-                    <button onclick="initializeClient('company2')" class="btn-secondary flex-1 py-3 rounded-lg text-sm">
-                        Initialize
+                <div class="flex items-end">
+                    <button onclick="addCompany()" class="btn-primary w-full py-3 rounded-lg text-sm">
+                        Add Company
                     </button>
                 </div>
-                <div id="company2Status" class="stat-card p-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">Status</span>
-                        <span id="company2State" class="text-sm font-semibold">Not Ready</span>
-                    </div>
-                    <div class="flex justify-between items-center mt-2">
-                        <span class="text-sm text-gray-600">Documents</span>
-                        <span id="company2Docs" class="text-sm font-semibold">0</span>
-                    </div>
+            </div>
+
+            <div id="companyMessage" class="mb-5"></div>
+
+            <div class="bg-gray-50 p-5 rounded-lg">
+                <h3 class="font-semibold mb-3">Registered Companies:</h3>
+                <div id="companiesList" class="space-y-2">
+                    <p class="text-sm text-gray-500">Loading companies...</p>
                 </div>
-                <div id="company2Message" class="mt-5"></div>
+            </div>
+        </div>
+
+        <!-- Dynamic Company Data Upload -->
+        <div class="card p-8 mb-8 fade-in">
+            <div class="mb-8">
+                <h2 class="section-title">Company Data Upload</h2>
+                <p class="section-subtitle mt-1">Upload documents for each company</p>
+            </div>
+
+            <div id="companiesDataSection">
+                <p class="text-sm text-gray-500">No companies registered yet. Add a company above to start.</p>
             </div>
         </div>
 
@@ -495,6 +484,184 @@
     <script>
         const API_BASE = '';
 
+        // ============= NEW FUNCTIONS START =============
+        async function loadCompanies() {
+            try {
+                const response = await fetch(`${API_BASE}/api/companies`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayCompaniesList(data.companies);
+                    displayCompaniesDataSection(data.companies);
+                }
+            } catch (error) {
+                console.error('Error loading companies:', error);
+            }
+        }
+
+        function displayCompaniesList(companies) {
+            const listDiv = document.getElementById('companiesList');
+
+            if (companies.length === 0) {
+                listDiv.innerHTML = '<p class="text-sm text-gray-500">No companies registered</p>';
+                return;
+            }
+
+            let html = '';
+            companies.forEach(company => {
+                const canDelete = companies.length > 1;
+
+                html += `
+            <div class="flex items-center justify-between bg-white p-3 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl"></span>
+                    <div>
+                        <p class="font-semibold">${company.id[0].toUpperCase() + company.id.slice(1)}</p>
+                        <p class="text-xs text-gray-500">
+                            ${company.is_ready ? '✓ Ready' : '⚠ Not initialized'} | 
+                            ${company.num_documents} documents
+                        </p>
+                    </div>
+                </div>
+                ${canDelete ? `
+                    <button onclick="removeCompany('${company.id}')" 
+                            class="btn-secondary px-3 py-1 rounded text-xs">
+                        Remove
+                    </button>
+                ` : `
+                    <span class="text-xs text-gray-400">Default</span>
+                `}
+            </div>
+        `;
+            });
+
+            listDiv.innerHTML = html;
+        }
+
+        function displayCompaniesDataSection(companies) {
+            const section = document.getElementById('companiesDataSection');
+
+            if (companies.length === 0) {
+                section.innerHTML = '<p class="text-sm text-gray-500">No companies registered yet.</p>';
+                return;
+            }
+
+            let html = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">';
+
+            companies.forEach(company => {
+                html += `
+            <div class="card p-6 fade-in">
+                <div class="company-card-header">
+                    <h3 class="section-title text-lg">${company.id[0].toUpperCase() + company.id.slice(1)}</h3>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Documents</label>
+                    <input type="file" id="${company.id}Files" multiple accept=".pdf,.txt,.docx"
+                        class="input-field w-full px-4 py-3 rounded-lg text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="${company.id}Multimodal" checked
+                            class="w-4 h-4 text-blue-600 rounded">
+                        <span class="text-sm font-medium text-gray-600">
+                            Enable Multimodal PDF (Tables, Images, OCR)
+                        </span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 ml-6">
+                        Extracts text, tables, images, and charts from PDFs. 
+                        Slower but more comprehensive.
+                    </p>
+                </div>
+                <div class="flex gap-3 mb-4">
+                    <button onclick="uploadDocuments('${company.id}')" 
+                            class="btn-primary flex-1 py-2.5 rounded-lg text-sm">
+                        Upload
+                    </button>
+                    <button onclick="initializeClient('${company.id}')" 
+                            class="btn-secondary flex-1 py-2.5 rounded-lg text-sm">
+                        Initialize
+                    </button>
+                </div>
+                <div class="stat-card p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Status</span>
+                        <span id="${company.id}State" class="text-sm font-semibold">
+                            ${company.is_ready ? 'Ready' : 'Not Ready'}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm text-gray-600">Documents</span>
+                        <span id="${company.id}Docs" class="text-sm font-semibold">
+                            ${company.num_documents}
+                        </span>
+                    </div>
+                </div>
+                <div id="${company.id}Message" class="mt-4"></div>
+            </div>
+        `;
+            });
+
+            html += '</div>';
+            section.innerHTML = html;
+        }
+
+        async function addCompany() {
+            const companyName = document.getElementById('newCompanyName').value.trim();
+
+            if (!companyName) {
+                showMessage('companyMessage', 'Please enter a company name', 'error');
+                return;
+            }
+
+            showMessage('companyMessage', 'Adding company...', 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('company_name', companyName);
+
+                const response = await fetch(`${API_BASE}/api/add-company`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showMessage('companyMessage', `${companyName} added successfully!`, 'success');
+                    document.getElementById('newCompanyName').value = '';
+                    await loadCompanies();
+                    await refreshStatus();
+                } else {
+                    showMessage('companyMessage', data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('companyMessage', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function removeCompany(companyId) {
+            if (!confirm(`Are you sure you want to remove ${companyId}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/remove-company/${companyId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showMessage('companyMessage', data.message, 'success');
+                    await loadCompanies();
+                    await refreshStatus();
+                } else {
+                    showMessage('companyMessage', data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('companyMessage', 'Error: ' + error.message, 'error');
+            }
+        }
+
+
         async function initializeSystem() {
             const retrieverModel = document.getElementById('retrieverModel').value;
             const generatorModel = document.getElementById('generatorModel').value;
@@ -557,16 +724,27 @@
         }
 
         async function initializeClient(companyId) {
-            showMessage(`${companyId}Message`, 'Initializing...', 'info');
+            const multimodalEnabled = document.getElementById(`${companyId}Multimodal`)?.checked ?? true;
+
+            showMessage(`${companyId}Message`,
+                `Initializing${multimodalEnabled ? ' with multimodal support' : ''}...`,
+                'info');
 
             try {
-                const response = await fetch(`${API_BASE}/api/initialize-client/${companyId}`, {
+                const endpoint = multimodalEnabled
+                    ? `/api/initialize-client-multimodal/${companyId}?use_multimodal=true`
+                    : `/api/initialize-client/${companyId}`;
+
+                const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST'
                 });
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    showMessage(`${companyId}Message`, 'Client initialized', 'success');
+                    const msg = multimodalEnabled
+                        ? `Client initialized with multimodal support (tables, images, OCR)`
+                        : `Client initialized`;
+                    showMessage(`${companyId}Message`, msg, 'success');
                     refreshStatus();
                 } else {
                     showMessage(`${companyId}Message`, data.message, 'error');
@@ -687,6 +865,10 @@
 
         async function refreshStatus() {
             try {
+                // Load companies first
+                await loadCompanies();
+
+                // Then load status
                 const response = await fetch(`${API_BASE}/api/status`);
                 const data = await response.json();
 
@@ -696,26 +878,43 @@
                     document.getElementById('trainingRounds').textContent = data.current_round;
 
                     let activeCount = 0;
-                    if (data.clients.company1 && data.clients.company1.is_ready) activeCount++;
-                    if (data.clients.company2 && data.clients.company2.is_ready) activeCount++;
+                    for (const clientId in data.clients) {
+                        if (data.clients[clientId].is_ready) activeCount++;
+
+                        // Update individual company status
+                        const stateEl = document.getElementById(`${clientId}State`);
+                        const docsEl = document.getElementById(`${clientId}Docs`);
+
+                        if (stateEl) {
+                            stateEl.textContent = data.clients[clientId].is_ready ? 'Ready' : 'Not Ready';
+                        }
+                        if (docsEl) {
+                            docsEl.textContent = data.clients[clientId].num_documents;
+                        }
+                    }
+
                     document.getElementById('activeClients').textContent = activeCount;
 
-                    if (data.clients.company1) {
-                        document.getElementById('company1State').textContent =
-                            data.clients.company1.is_ready ? 'Ready' : 'Not Ready';
-                        document.getElementById('company1Docs').textContent =
-                            data.clients.company1.num_documents;
-                    }
-
-                    if (data.clients.company2) {
-                        document.getElementById('company2State').textContent =
-                            data.clients.company2.is_ready ? 'Ready' : 'Not Ready';
-                        document.getElementById('company2Docs').textContent =
-                            data.clients.company2.num_documents;
-                    }
+                    // Update query company dropdown
+                    updateQueryCompanyDropdown(data.clients);
                 }
             } catch (error) {
                 console.error('Error refreshing status:', error);
+            }
+        }
+
+        // ==================== SECTION 7 ====================
+        function updateQueryCompanyDropdown(clients) {
+            const dropdown = document.getElementById('queryCompany');
+            if (!dropdown) return;
+
+            dropdown.innerHTML = '';
+
+            for (const clientId in clients) {
+                const option = document.createElement('option');
+                option.value = clientId;
+                option.textContent = clientId;
+                dropdown.appendChild(option);
             }
         }
 
@@ -784,8 +983,11 @@
             }
         }
 
-        window.onload = () => {
-            refreshStatus();
+        // ==================== SECTION 8 ====================
+
+        window.onload = async () => {
+            await loadCompanies();
+            await refreshStatus();
         };
     </script>
 </body>

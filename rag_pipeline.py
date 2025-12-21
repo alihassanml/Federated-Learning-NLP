@@ -45,12 +45,18 @@ class RAGPipeline:
         print(f"  Retriever: {retriever_model}")
         print(f"  Generator: {generator_model}")
     
-    def load_and_index_documents(self):
-        """Load documents and create FAISS index"""
-        print(f"Loading documents from {self.data_folder}")
+    def load_and_index_documents(self, use_multimodal=True):
+        # Load documents and create FAISS index
         
-        # Load documents
-        documents = load_documents_from_folder(self.data_folder)
+        # Args:
+        #     use_multimodal: If True, use multimodal PDF parsing (tables, images, OCR)
+
+        print(f"Loading documents from {self.data_folder}")
+        print(f"Multimodal parsing: {'Enabled' if use_multimodal else 'Disabled'}")
+        
+        # Load documents with multimodal support
+        documents = load_documents_from_folder(self.data_folder, use_multimodal=use_multimodal)
+
         
         if not documents:
             print("No documents found. Creating sample data.")

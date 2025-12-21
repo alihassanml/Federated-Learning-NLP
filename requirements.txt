@@ -18,3 +18,10 @@ openpyxl
 aiofiles
 pydantic
 pandas
+pdfplumber
+pytesseract
+Pillow
+pandas
+opencv-python
+pdf2image
+tabula-py
