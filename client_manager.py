@@ -7,19 +7,29 @@ from rag_pipeline import RAGPipeline
 from models import add_differential_privacy_noise
 import json
 import os
+import base64
+from typing import Dict, List, Tuple, Optional
+
 
 class FederatedClient:
     """Represents a client (company) in federated learning"""
     
     def __init__(self, client_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2',
-                 generator_model='google/flan-t5-base'):
+                 generator_model='google/flan-t5-base',use_lora=True):
         self.client_id = client_id
         self.data_folder = data_folder
-        self.rag_pipeline = RAGPipeline(client_id, data_folder, retriever_model, generator_model)
+        self.use_lora = use_lora
+        self.rag_pipeline = RAGPipeline(client_id, data_folder, retriever_model, generator_model,use_lora=use_lora)
         self.training_history = []
         self.is_ready = False
         self.retriever_model = retriever_model
         self.generator_model = generator_model
+        
+
+        self.public_key = None
+        self.private_key = None
+        self.session_key = None
+        self.peer_public_keys = {}
     
     def initialize(self):
         """Initialize client by loading and indexing documents"""
@@ -37,6 +47,28 @@ class FederatedClient:
                 'message': str(e)
             }
     
+
+    def setup_secure_aggregation(self, keys_info: Dict):
+        """
+        Setup secure aggregation for this client
+        
+        Args:
+            keys_info: Dict with public_key, private_key, session_key, all_public_keys
+        """
+        self.public_key = base64.b64decode(keys_info['public_key'])
+        self.private_key = base64.b64decode(keys_info['private_key'])
+        self.session_key = base64.b64decode(keys_info['session_key'])
+        
+        # Store peer public keys
+        self.peer_public_keys = {
+            cid: base64.b64decode(pk)
+            for cid, pk in keys_info.get('all_public_keys', {}).items()
+        }
+        
+        print(f"  [Secure] {self.client_id} configured for secure aggregation")
+
+
+
     def update_global_model(self, global_retriever_state=None, global_generator_state=None):
         """Update local model with global model weights"""
         try:
@@ -84,6 +116,17 @@ class FederatedClient:
             # GET UPDATED LORA
             generator_updates = self.rag_pipeline.generator.get_trainable_state_dict()
 
+            # Create masked update if secure aggregation enabled
+            masked_update = None
+            if hasattr(self, 'secure_aggregator') and self.secure_aggregator:
+                active_clients = training_config.get('active_clients', [])
+                masked_update = self.secure_aggregator.create_masked_update(
+                    self.client_id,
+                    generator_updates,
+                    active_clients
+                )
+                print(f"  [Secure] {self.client_id} created masked update")
+
             # APPLY DP TO MODEL UPDATES (POST-TRAIN)
             if use_dp:
                 generator_updates = add_differential_privacy_noise(
@@ -106,6 +149,7 @@ class FederatedClient:
                 'epoch_losses': epoch_losses,  # send back full epoch info
                 'num_samples': len(questions),
                 'generator_updates': generator_updates,
+                'masked_update': masked_update,
                 'message': f'Training completed. Loss: {epoch_losses[-1]:.4f}'
             }
 
@@ -193,12 +237,12 @@ class ClientManager:
         self.clients = {}
     
     def register_client(self, client_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2',
-                       generator_model='google/flan-t5-base'):
+                       generator_model='google/flan-t5-base',use_lora=True):
         """Register a new client"""
         if client_id in self.clients:
             return {'status': 'error', 'message': 'Client already registered'}
         
-        client = FederatedClient(client_id, data_folder, retriever_model, generator_model)
+        client = FederatedClient(client_id, data_folder, retriever_model, generator_model,use_lora=use_lora)
         self.clients[client_id] = client
         
         return {'status': 'success', 'message': f'Client {client_id} registered'}

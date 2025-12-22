@@ -25,3 +25,5 @@ pandas
 opencv-python
 pdf2image
 tabula-py
+pycryptodome
+cryptography

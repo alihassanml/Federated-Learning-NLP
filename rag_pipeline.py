@@ -31,11 +31,12 @@ class RAGPipeline:
     """Complete RAG pipeline with retrieval and generation"""
     
     def __init__(self, company_id, data_folder, retriever_model='sentence-transformers/all-mpnet-base-v2', 
-                 generator_model='google/flan-t5-base'):
+                 generator_model='google/flan-t5-base',use_lora=True):
         self.company_id = company_id
         self.data_folder = data_folder
         self.retriever = RetrieverModel(retriever_model)
-        self.generator = GeneratorModel(generator_model, use_lora=True)
+        self.generator = GeneratorModel(generator_model, use_lora=use_lora)
+        self.use_lora = use_lora
         
         self.index = None
         self.chunks = []
@@ -44,6 +45,7 @@ class RAGPipeline:
         print(f"RAG Pipeline initialized for {company_id}")
         print(f"  Retriever: {retriever_model}")
         print(f"  Generator: {generator_model}")
+        print(f"  LoRA: {'Enabled' if use_lora else 'Disabled'}") 
     
     def load_and_index_documents(self, use_multimodal=True):
         # Load documents and create FAISS index

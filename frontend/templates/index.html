@@ -301,6 +301,10 @@
                         <p class="stat-label mb-2">Active Companies</p>
                         <p id="activeClients" class="stat-value">0</p>
                     </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">LoRA Status</p>
+                        <p id="loraStatus" class="stat-value text-lg">Unknown</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -342,12 +346,80 @@
                         </option>
                     </select>
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fine-tuning Method</label>
+                    <select id="useLora" class="select-field w-full px-4 py-3 rounded-lg text-sm">
+                        <option value="true" selected>
+                            LoRA (Fast, Low Memory) ⚡
+                        </option>
+                        <option value="false">
+                            Full Fine-tuning (Slow, High Memory) 🐢
+                        </option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <strong>LoRA:</strong> 100x less communication, 5x faster training, ~2% accuracy drop<br>
+                        <strong>Full:</strong> Maximum accuracy but high resource usage
+                    </p>
+                </div>
             </div>
 
             <button onclick="initializeSystem()" class="btn-primary px-6 py-3 rounded-lg text-sm">
                 Initialize System
             </button>
             <div id="initMessage" class="mt-5"></div>
+        </div>
+
+
+        <!-- Secure Aggregation Setup -->
+        <div class="card p-8 mb-8 fade-in">
+            <div class="mb-8">
+                <h2 class="section-title">Secure Aggregation (Cryptographic Privacy)</h2>
+                <p class="section-subtitle mt-1">Enable end-to-end encryption for model updates</p>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <p class="text-sm text-blue-900 mb-2">
+                    <strong>🔐 Enhanced Privacy:</strong> With secure aggregation enabled:
+                </p>
+                <ul class="text-sm text-blue-800 list-disc list-inside space-y-1">
+                    <li>Server cannot see individual client updates</li>
+                    <li>Pairwise masking with cryptographic keys</li>
+                    <li>Only aggregate is revealed after mask cancellation</li>
+                    <li>Protects against honest-but-curious server</li>
+                </ul>
+            </div>
+
+            <div class="flex gap-4 mb-6">
+                <button onclick="enableSecureAggregation()" class="btn-primary px-6 py-3 rounded-lg text-sm">
+                    Enable Secure Aggregation
+                </button>
+                <button onclick="setupSecureClients()" class="btn-secondary px-6 py-3 rounded-lg text-sm">
+                    Setup Client Keys
+                </button>
+                <button onclick="checkSecureStatus()" class="btn-secondary px-6 py-3 rounded-lg text-sm">
+                    Check Status
+                </button>
+            </div>
+
+            <div id="secureAggMessage" class="mb-5"></div>
+
+            <div class="stat-card p-5">
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p class="stat-label mb-2">Status</p>
+                        <p id="secureStatus" class="text-lg font-semibold">Disabled</p>
+                    </div>
+                    <div>
+                        <p class="stat-label mb-2">Clients</p>
+                        <p id="secureClients" class="text-lg font-semibold">0</p>
+                    </div>
+                    <div>
+                        <p class="stat-label mb-2">Round</p>
+                        <p id="secureRound" class="text-lg font-semibold">0</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Company Management -->
@@ -477,6 +549,39 @@
             </div>
             <div id="trainingHistory">
                 <p class="text-sm text-gray-500">No training history available.</p>
+            </div>
+        </div>
+
+        <!-- Byzantine Defense Monitor -->
+        <div class="card mt-8 p-8 mb-8 fade-in">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+                <div>
+                    <h2 class="section-title">Byzantine Defense Monitor</h2>
+                    <p class="section-subtitle mt-1">Track suspicious client behavior</p>
+                </div>
+                <button onclick="loadByzantineStats()"
+                    class="btn-secondary px-5 py-2.5 rounded-lg text-sm mt-4 md:mt-0">
+                    Refresh Stats
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="stat-card p-5">
+                    <p class="stat-label mb-2">Defense Method</p>
+                    <p id="defenseMethod" class="text-lg font-semibold">Norm Filter</p>
+                </div>
+                <div class="stat-card p-5">
+                    <p class="stat-label mb-2">Total Rejections</p>
+                    <p id="totalRejections" class="stat-value text-2xl">0</p>
+                </div>
+                <div class="stat-card p-5">
+                    <p class="stat-label mb-2">Suspicious Clients</p>
+                    <p id="suspiciousCount" class="stat-value text-2xl">0</p>
+                </div>
+            </div>
+
+            <div id="clientReputations">
+                <p class="text-sm text-gray-500">No reputation data available yet.</p>
             </div>
         </div>
     </main>
@@ -665,6 +770,7 @@
         async function initializeSystem() {
             const retrieverModel = document.getElementById('retrieverModel').value;
             const generatorModel = document.getElementById('generatorModel').value;
+            const useLora = document.getElementById('useLora').value === 'true';
 
             showMessage('initMessage', `Initializing system...`, 'info');
             try {
@@ -673,13 +779,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         retriever_model: retrieverModel,
-                        generator_model: generatorModel
+                        generator_model: generatorModel,
+                        use_lora: useLora
                     })
                 });
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    showMessage('initMessage', `System initialized successfully`, 'success');
+                    showMessage('initMessage',
+                        `System initialized successfully with ${data.use_lora ? 'LoRA' : 'Full Fine-tuning'}`,
+                        'success');
                     refreshStatus();
                 } else {
                     showMessage('initMessage', 'Initialization failed', 'error');
@@ -877,7 +986,22 @@
                         data.server_initialized ? 'Online' : 'Offline';
                     document.getElementById('trainingRounds').textContent = data.current_round;
 
+
+                    let loraStatus = 'Unknown';
+                    for (const clientId in data.clients) {
+                        const client = data.clients[clientId];
+                        if (client.use_lora !== undefined) {
+                            loraStatus = client.use_lora ? 'Enabled ⚡' : 'Disabled';
+                            break;
+                        }
+                    }
+                    const loraCard = document.getElementById('loraStatus');
+                    if (loraCard) {
+                        loraCard.textContent = loraStatus;
+                    }
+
                     let activeCount = 0;
+
                     for (const clientId in data.clients) {
                         if (data.clients[clientId].is_ready) activeCount++;
 
@@ -982,12 +1106,176 @@
                 element.innerHTML = '';
             }
         }
+        // ==================== Byzantine SECTION  ====================
+
+
+        async function loadByzantineStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/byzantine-stats`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayByzantineStats(data.stats);
+                }
+            } catch (error) {
+                console.error('Error loading Byzantine stats:', error);
+            }
+        }
+
+        function displayByzantineStats(stats) {
+            // Update summary stats
+            document.getElementById('defenseMethod').textContent =
+                stats.method || 'Norm Filter';
+            document.getElementById('totalRejections').textContent =
+                stats.total_suspicious_events || 0;
+            document.getElementById('suspiciousCount').textContent =
+                Object.keys(stats.suspicious_clients || {}).length;
+
+            // Display client reputations
+            const reputationsDiv = document.getElementById('clientReputations');
+            const reputations = stats.client_reputations || {};
+
+            if (Object.keys(reputations).length === 0) {
+                reputationsDiv.innerHTML =
+                    '<p class="text-sm text-gray-500">All clients have good reputation</p>';
+                return;
+            }
+
+            let html = '<div class="space-y-3">';
+
+            for (const [clientId, reputation] of Object.entries(reputations)) {
+                const suspicionCount = stats.suspicious_clients[clientId] || 0;
+                const repPercent = (reputation * 100).toFixed(0);
+                const statusColor = reputation > 0.7 ? 'green' : reputation > 0.4 ? 'orange' : 'red';
+
+                html += `
+            <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="text-lg">🏢</span>
+                        <span class="font-semibold">${clientId}</span>
+                        <span class="text-xs px-2 py-1 rounded" 
+                              style="background-color: ${statusColor}20; color: ${statusColor}">
+                            Reputation: ${repPercent}%
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        Suspicious events: ${suspicionCount}
+                    </div>
+                    <!-- Reputation bar -->
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div class="h-2 rounded-full" 
+                             style="width: ${repPercent}%; background-color: ${statusColor}">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="resetClientReputation('${clientId}')" 
+                        class="btn-secondary px-3 py-2 rounded text-xs ml-4">
+                    Reset
+                </button>
+            </div>
+        `;
+            }
+
+            html += '</div>';
+            reputationsDiv.innerHTML = html;
+        }
+
+        async function resetClientReputation(clientId) {
+            if (!confirm(`Reset reputation for ${clientId}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/reset-client-reputation/${clientId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert(`Reputation reset for ${clientId}`);
+                    await loadByzantineStats();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // ==================== SECTION enableSecureAggregation ====================
+
+        async function enableSecureAggregation() {
+            const all_clients = await fetch(`${API_BASE}/api/companies`);
+            const data = await all_clients.json();
+            const numClients = data.companies ? data.companies.length : 2;
+
+            showMessage('secureAggMessage', 'Enabling secure aggregation...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/enable-secure-aggregation?num_clients=${numClients}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showMessage('secureAggMessage',
+                        '✓ Secure aggregation enabled! Now setup client keys.',
+                        'success');
+                    await checkSecureStatus();
+                } else {
+                    showMessage('secureAggMessage', 'Failed to enable', 'error');
+                }
+            } catch (error) {
+                showMessage('secureAggMessage', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function setupSecureClients() {
+            showMessage('secureAggMessage', 'Generating cryptographic keys...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/setup-secure-clients`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showMessage('secureAggMessage',
+                        `✓ Secure keys distributed to ${result.clients.length} clients. Ready for secure training!`,
+                        'success');
+                    await checkSecureStatus();
+                } else {
+                    showMessage('secureAggMessage', 'Setup failed', 'error');
+                }
+            } catch (error) {
+                showMessage('secureAggMessage', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function checkSecureStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/secure-aggregation-status`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('secureStatus').textContent =
+                        data.enabled ? '🔐 Enabled' : '❌ Disabled';
+                    document.getElementById('secureStatus').style.color =
+                        data.enabled ? 'green' : 'gray';
+                    document.getElementById('secureClients').textContent = data.num_clients;
+                    document.getElementById('secureRound').textContent = data.current_round;
+                }
+            } catch (error) {
+                console.error('Error checking secure status:', error);
+            }
+        }
 
         // ==================== SECTION 8 ====================
 
         window.onload = async () => {
             await loadCompanies();
             await refreshStatus();
+            await loadByzantineStats();
+            await checkSecureStatus();
         };
     </script>
 </body>

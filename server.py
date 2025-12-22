@@ -52,6 +52,7 @@ class TrainingConfig(BaseModel):
 class InitializeRequest(BaseModel):
     retriever_model: str = "sentence-transformers/all-mpnet-base-v2"
     generator_model: str = "google/flan-t5-base"
+    use_lora: bool = True
 
 class QueryRequest(BaseModel):
     question: str
@@ -260,9 +261,9 @@ async def initialize_system(config: InitializeRequest):
     try:
         # Register clients with selected models
         client_manager.register_client("company1", "data/company1", 
-                                      config.retriever_model, config.generator_model)
+                                      config.retriever_model, config.generator_model,use_lora=config.use_lora)
         client_manager.register_client("company2", "data/company2",
-                                      config.retriever_model, config.generator_model)
+                                      config.retriever_model, config.generator_model,use_lora=config.use_lora)
         
         # Initialize global model
         fed_result = fed_server.initialize_global_model()
@@ -276,6 +277,55 @@ async def initialize_system(config: InitializeRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/enable-secure-aggregation")
+async def enable_secure_aggregation(num_clients: int = 2):
+    """Enable secure aggregation protocol"""
+    try:
+        result = fed_server.enable_secure_aggregation(num_clients)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/setup-secure-clients")
+async def setup_secure_clients():
+    """Setup secure aggregation for all clients"""
+    try:
+        all_clients = client_manager.get_all_clients()
+        client_ids = list(all_clients.keys())
+        
+        # Generate keys for all clients
+        keys_info = fed_server.setup_secure_clients(client_ids)
+        
+        # Distribute keys to clients
+        for client_id, client in all_clients.items():
+            if client_id in keys_info['client_keys']:
+                client_info = keys_info['client_keys'][client_id]
+                client_info['all_public_keys'] = keys_info['all_public_keys']
+                client.setup_secure_aggregation(client_info)
+        
+        return {
+            'status': 'success',
+            'message': f'Secure aggregation configured for {len(client_ids)} clients',
+            'clients': client_ids
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/secure-aggregation-status")
+async def get_secure_aggregation_status():
+    """Get status of secure aggregation"""
+    try:
+        return {
+            'status': 'success',
+            'enabled': fed_server.use_secure_aggregation,
+            'num_clients': fed_server.secure_aggregator.num_clients if fed_server.secure_aggregator else 0,
+            'current_round': fed_server.secure_aggregator.round_number if fed_server.secure_aggregator else 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload-documents/{company_id}")
 async def upload_documents(
@@ -284,7 +334,7 @@ async def upload_documents(
 ):
     """Upload documents for a company"""
     try:
-        if company_id not in ["company1", "company2"]:
+        if company_id not in client_manager.clients:
             raise HTTPException(status_code=400, detail="Invalid company ID")
         
         data_folder = f"data/{company_id}"
@@ -314,7 +364,7 @@ async def upload_documents(
 async def initialize_client(company_id: str):
     """Initialize a client (load and index documents)"""
     try:
-        if company_id not in ["company1", "company2"]:
+        if company_id not in client_manager.clients:
             raise HTTPException(status_code=400, detail="Invalid company ID")
         
         # Register if not already registered
@@ -398,10 +448,67 @@ async def start_training(config: TrainingConfig):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# =============================================================================
+# BYZANTINE DEFENSE ENDPOINTS
+# =============================================================================
+
+@app.get("/api/byzantine-stats")
+async def get_byzantine_stats():
+    """Get Byzantine defense statistics"""
+    try:
+        stats = fed_server.get_byzantine_stats()
+        
+        # Add reputation scores
+        reputations = {}
+        for client_id in stats.get('suspicious_clients', {}).keys():
+            reputations[client_id] = fed_server.byzantine_defense.get_client_reputation(client_id)
+        
+        stats['client_reputations'] = reputations
+        
+        return {
+            'status': 'success',
+            'stats': stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/reset-client-reputation/{client_id}")
+async def reset_client_reputation(client_id: str):
+    """Reset reputation for a client after verification"""
+    try:
+        fed_server.byzantine_defense.reset_client_reputation(client_id)
+        
+        return {
+            'status': 'success',
+            'message': f'Reputation reset for {client_id}'
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/exclude-client/{client_id}")
+async def exclude_client(client_id: str):
+    """Manually exclude a malicious client"""
+    try:
+        if client_id in client_manager.clients:
+            # Mark as highly suspicious
+            fed_server.byzantine_defense.suspicious_clients[client_id] = 10
+            
+            return {
+                'status': 'success',
+                'message': f'{client_id} marked as malicious and excluded'
+            }
+        else:
+            return {
+                'status': 'error',
+                'message': f'Client {client_id} not found'
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+# =============================================================================
 
 @app.post("/api/query")
 async def query_system(request: QueryRequest):
