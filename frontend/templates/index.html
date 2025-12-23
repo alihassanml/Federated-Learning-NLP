@@ -771,6 +771,7 @@
             const retrieverModel = document.getElementById('retrieverModel').value;
             const generatorModel = document.getElementById('generatorModel').value;
             const useLora = document.getElementById('useLora').value === 'true';
+            document.getElementById('loraStatus').textContent = useLora ? "Enabled ✅" : "Disabled";
 
             showMessage('initMessage', `Initializing system...`, 'info');
             try {
@@ -958,7 +959,7 @@
                 html += `
                     <div class="bg-white p-4 rounded-lg">
                         <p class="text-sm font-medium mb-1">${source.metadata.source}</p>
-                        <p class="text-sm text-gray-600">${source.text.substring(0, 200)}...</p>
+                        <p class="text-sm text-gray-600">${source.text.substring(0, 250)}...</p>
                     </div>
                 `;
             });
@@ -1258,7 +1259,7 @@
 
                 if (data.status === 'success') {
                     document.getElementById('secureStatus').textContent =
-                        data.enabled ? '🔐 Enabled' : '❌ Disabled';
+                        data.enabled ? '🔐 Enabled' : 'Disabled';
                     document.getElementById('secureStatus').style.color =
                         data.enabled ? 'green' : 'gray';
                     document.getElementById('secureClients').textContent = data.num_clients;

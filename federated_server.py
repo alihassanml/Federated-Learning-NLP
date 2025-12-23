@@ -10,6 +10,7 @@ from adaptive_privacy import AdaptivePrivacy
 from byzantine_defense import ByzantineDefense
 from typing import List, Dict, Tuple
 from secure_aggregation import SecureAggregator, SecureChannel
+import base64
 
 
 
@@ -122,7 +123,7 @@ class FederatedServer:
                 client_ids = []
                 
                 for update in valid_clients:
-                    if 'masked_update' in update:
+                    if 'masked_update' in update and update['masked_update'] is not None:
                         masked_updates.append(update['masked_update'])
                         client_ids.append(update['client_id'])
                     else:
@@ -132,7 +133,7 @@ class FederatedServer:
                             update['generator_updates'],
                             [u['client_id'] for u in valid_clients]
                         )
-                        masked_updates.append(masked_update)
+                        masked_updates.append(update['generator_updates'])
                         client_ids.append(update['client_id'])
                 
                 # Aggregate masked updates (masks cancel out)
