@@ -8,7 +8,7 @@ from typing import List, Optional
 import os
 import shutil
 from datetime import datetime
-
+import json
 from client_manager import ClientManager
 from federated_server import FederatedServer
 
@@ -606,6 +606,102 @@ async def reset_system():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/metrics/download")
+async def download_metrics():
+    """Download metrics JSON file"""
+    try:
+        metrics_file = "metrics/training_metrics.json"
+        
+        if not os.path.exists(metrics_file):
+            return {
+                'status': 'error',
+                'message': 'No metrics file found. Run training first.'
+            }
+        
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            metrics_file,
+            media_type='application/json',
+            filename='training_metrics.json'
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/metrics/generate-plots")
+async def generate_plots():
+    """Generate all plots for the paper"""
+    try:
+        if not hasattr(fed_server, 'metrics_logger'):
+            return {
+                'status': 'error',
+                'message': 'Metrics logger not initialized'
+            }
+        
+        # Generate training curves
+        curves_path = fed_server.metrics_logger.plot_training_curves()
+        
+        # Generate LaTeX table
+        latex_path = fed_server.metrics_logger.generate_latex_table()
+        
+        # Print summary
+        fed_server.metrics_logger.print_summary()
+        
+        return {
+            'status': 'success',
+            'message': 'Plots generated successfully',
+            'files': {
+                'training_curves': curves_path,
+                'latex_table': latex_path,
+                'metrics_json': 'metrics/training_metrics.json'
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/metrics/summary")
+async def get_metrics_summary():
+    """Get training metrics summary"""
+    try:
+        if not hasattr(fed_server, 'metrics_logger'):
+            return {
+                'status': 'error',
+                'message': 'Metrics logger not initialized'
+            }
+        
+        summary = fed_server.metrics_logger._generate_summary()
+        
+        return {
+            'status': 'success',
+            'summary': summary
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/metrics/view")
+async def view_metrics():
+    """View current metrics"""
+    try:
+        metrics_file = "metrics/training_metrics.json"
+        
+        if not os.path.exists(metrics_file):
+            return {
+                'status': 'error',
+                'message': 'No metrics available yet'
+            }
+        
+        with open(metrics_file, 'r') as f:
+            metrics = json.load(f)
+        
+        return {
+            'status': 'success',
+            'metrics': metrics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

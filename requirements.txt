@@ -27,3 +27,4 @@ pdf2image
 tabula-py
 pycryptodome
 cryptography
+matplotlib

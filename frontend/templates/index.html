@@ -252,9 +252,7 @@
             }
         }
 
-        .container {
-            max-width: 1200px;
-        }
+       
     </style>
 </head>
 
@@ -552,6 +550,163 @@
             </div>
         </div>
 
+
+        <!-- ==================== METRICS & VISUALIZATION SECTION (IMPROVED) ==================== -->
+        <div class="card p-8 fade-in mt-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+                <div>
+                    <h2 class="section-title">Research Metrics & Visualization</h2>
+                    <p class="section-subtitle mt-1">Generate plots and tables for your research paper</p>
+                </div>
+                <div class="flex gap-3 mt-4 md:mt-0">
+                    <button onclick="generatePlots()" class="btn-primary px-5 py-2.5 rounded-lg text-sm">
+                        📊 Generate Plots
+                    </button>
+                    <button onclick="downloadMetrics()" class="btn-secondary px-5 py-2.5 rounded-lg text-sm">
+                        💾 Download JSON
+                    </button>
+                    <button onclick="viewMetricsSummary()" class="btn-secondary px-5 py-2.5 rounded-lg text-sm">
+                        View Summary
+                    </button>
+                </div>
+            </div>
+
+            <div id="metricsMessage" class="mb-5"></div>
+
+            <!-- Metrics Summary Display -->
+            <div id="metricsSummary" class="hidden">
+                <h3 class="font-semibold text-lg mb-4">Training Summary Statistics</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Total Rounds</p>
+                        <p id="summaryRounds" class="stat-value">0</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Final Loss</p>
+                        <p id="summaryLoss" class="stat-value">0.0000</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Loss Improvement</p>
+                        <p id="summaryImprovement" class="stat-value text-green-600">0.0000</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Communication (MB)</p>
+                        <p id="summaryComm" class="stat-value text-2xl">0.00</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Privacy Budget (ε)</p>
+                        <p id="summaryPrivacy" class="stat-value text-2xl">0.00</p>
+                    </div>
+                    <div class="stat-card p-5">
+                        <p class="stat-label mb-2">Byzantine Events</p>
+                        <p id="summaryByzantine" class="stat-value text-2xl text-red-600">0</p>
+                    </div>
+                </div>
+
+                <!-- Loss Reduction Percentage -->
+                <div
+                    class="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-lg mb-8 border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-green-900 mb-1">Loss Reduction</p>
+                            <p class="text-xs text-green-700">Lower is better - shows training effectiveness</p>
+                        </div>
+                        <span id="lossReduction" class="text-4xl font-bold text-green-700">0%</span>
+                    </div>
+                </div>
+
+                <!-- Charts Section - IMPROVED LAYOUT -->
+                <h3 class="font-semibold text-lg mb-4 mt-8">Training Visualizations</h3>
+
+                <div class="grid grid-cols-1 gap-8">
+                    <!-- Chart 1: Training Loss (Full Width) -->
+                    <div
+                        class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-sm border border-blue-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-gray-800">Training Loss Convergence</h4>
+                            <span class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">Primary
+                                Metric</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg" style="height: 350px;">
+                            <canvas id="lossChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Charts 2-4: Grid Layout -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Chart 2: Per-Client Loss -->
+                        <div
+                            class="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl shadow-sm border border-purple-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-semibold text-gray-800">👥 Per-Client Loss</h4>
+                                <span
+                                    class="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">Comparison</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg" style="height: 300px;">
+                                <canvas id="clientLossChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 3: Communication Cost -->
+                        <div
+                            class="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 rounded-xl shadow-sm border border-cyan-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-semibold text-gray-800">📡 Communication Cost</h4>
+                                <span
+                                    class="text-xs bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full font-medium">Efficiency</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg" style="height: 300px;">
+                                <canvas id="commChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 4: Privacy Budget (Full Width) -->
+                    <div
+                        class="bg-gradient-to-br from-red-50 to-orange-50 p-6 rounded-xl shadow-sm border border-red-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-gray-800">🔒 Privacy Budget Consumption</h4>
+                            <span
+                                class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-medium">Privacy</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg" style="height: 300px;">
+                            <canvas id="privacyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h3 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                    <span></span>
+                    <span>Export Options for Research Paper</span>
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button onclick="exportPNG()"
+                        class="btn-primary py-3 rounded-lg text-sm hover:btn-primary transition">
+                        Export PNG Images
+                    </button>
+                    <button onclick="exportLaTeX()"
+                        class="btn-primary py-3 rounded-lg text-sm hover:btn-primary transition">
+                        Export LaTeX Tables
+                    </button>
+                    <button onclick="exportCSV()"
+                        class="btn-primary   py-3 rounded-lg text-sm hover:btn-primary transition">
+                        Export CSV Data
+                    </button>
+                </div>
+                <p class="text-xs text-blue-700 mt-4 bg-white/50 p-3 rounded-lg">
+                    💡 <strong>Tip:</strong> All files are saved in the <code
+                        class="bg-blue-100 px-2 py-1 rounded">metrics/</code> folder.
+                    Use PNG images for your paper figures and LaTeX tables for results section.
+                </p>
+            </div>
+        </div>
         <!-- Byzantine Defense Monitor -->
         <div class="card mt-8 p-8 mb-8 fade-in">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
@@ -585,7 +740,7 @@
             </div>
         </div>
     </main>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const API_BASE = '';
 
@@ -1270,6 +1425,7 @@
             }
         }
 
+
         // ==================== SECTION 8 ====================
 
         window.onload = async () => {
@@ -1278,6 +1434,638 @@
             await loadByzantineStats();
             await checkSecureStatus();
         };
+
+
+        // Chart instances (global)
+        let lossChartInstance = null;
+        let clientLossChartInstance = null;
+        let commChartInstance = null;
+        let privacyChartInstance = null;
+
+        // ============ GENERATE PLOTS ============
+        async function generatePlots() {
+            showMessage('metricsMessage', '🎨 Generating plots and tables...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/metrics/generate-plots`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showMessage('metricsMessage',
+                        `✅ Plots generated successfully!\n\n` +
+                        `📁 Files created:\n` +
+                        `• Training curves: ${data.files.training_curves}\n` +
+                        `• LaTeX table: ${data.files.latex_table}\n` +
+                        `• Metrics JSON: ${data.files.metrics_json}`,
+                        'success'
+                    );
+
+                    // Auto-load summary after generating
+                    await viewMetricsSummary();
+                } else {
+                    showMessage('metricsMessage', '❌ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('metricsMessage', '❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // ============ DOWNLOAD METRICS JSON ============
+        async function downloadMetrics() {
+            try {
+                showMessage('metricsMessage', '💾 Downloading metrics...', 'info');
+                window.location.href = `${API_BASE}/api/metrics/download`;
+
+                setTimeout(() => {
+                    showMessage('metricsMessage', '✅ Metrics downloaded!', 'success');
+                }, 1000);
+            } catch (error) {
+                showMessage('metricsMessage', '❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // ============ VIEW METRICS SUMMARY (NULL-SAFE) ============
+        async function viewMetricsSummary() {
+            try {
+                showMessage('metricsMessage', '📊 Loading metrics summary...', 'info');
+
+                const response = await fetch(`${API_BASE}/api/metrics/summary`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const summary = data.summary;
+
+                    // Show summary section
+                    const summarySection = document.getElementById('metricsSummary');
+                    if (summarySection) {
+                        summarySection.classList.remove('hidden');
+                    }
+
+                    // 👇 NULL-SAFE: Update summary values with checks
+                    safeSetText('summaryRounds', summary.total_rounds || 0);
+                    safeSetText('summaryLoss', summary.final_loss ? summary.final_loss.toFixed(4) : 'N/A');
+                    safeSetText('summaryImprovement', summary.avg_loss_improvement ? summary.avg_loss_improvement.toFixed(4) : 'N/A');
+                    safeSetText('summaryComm', summary.total_communication_mb ? summary.total_communication_mb.toFixed(2) : '0.00');
+                    safeSetText('summaryPrivacy', summary.final_privacy_budget ? summary.final_privacy_budget.toFixed(2) : '0.00');
+                    safeSetText('summaryByzantine', summary.total_byzantine_events || 0);
+
+                    // Loss reduction percentage
+                    const lossReduction = summary.loss_reduction_percent || 0;
+                    safeSetText('lossReduction', lossReduction.toFixed(1) + '%');
+
+                    // Load and draw all charts
+                    await drawAllCharts();
+
+                    showMessage('metricsMessage', 'Metrics loaded successfully!', 'success');
+                } else {
+                    showMessage('metricsMessage', '⚠️ ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('metricsMessage', 'Error: ' + error.message, 'error');
+                console.error('Full error:', error);
+            }
+        }
+
+        // ============ HELPER: NULL-SAFE SET TEXT ============
+        function safeSetText(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = value;
+            } else {
+                console.warn(`⚠️ Element not found: ${elementId}`);
+            }
+        }
+
+        // ============ DRAW ALL CHARTS (NULL-SAFE) ============
+        async function drawAllCharts() {
+            try {
+                const response = await fetch(`${API_BASE}/api/metrics/view`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.metrics) {
+                    const metrics = data.metrics;
+
+                    // Draw each chart with null checks
+                    if (metrics.training_rounds && metrics.training_rounds.length > 0) {
+                        drawLossChart(metrics.training_rounds);
+                    }
+
+                    if (metrics.client_metrics && Object.keys(metrics.client_metrics).length > 0) {
+                        drawClientLossChart(metrics.client_metrics);
+                    }
+
+                    if (metrics.communication_cost && metrics.communication_cost.length > 0) {
+                        drawCommunicationChart(metrics.communication_cost);
+                    }
+
+                    if (metrics.privacy_budget && metrics.privacy_budget.length > 0) {
+                        drawPrivacyChart(metrics.privacy_budget);
+                    }
+                }
+            } catch (error) {
+                console.error('Error drawing charts:', error);
+            }
+        }
+
+        // ============ DRAW TRAINING LOSS CHART (NULL-SAFE) ============
+        function drawLossChart(trainingRounds) {
+            const canvas = document.getElementById('lossChart');
+            if (!canvas) {
+                console.warn('⚠️ Loss chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            const rounds = trainingRounds.map(r => r.round);
+            const losses = trainingRounds.map(r => r.avg_loss);
+
+            // Destroy existing chart
+            if (lossChartInstance) {
+                lossChartInstance.destroy();
+            }
+
+            lossChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rounds,
+                    datasets: [{
+                        label: 'Average Loss',
+                        data: losses,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: '#1d4ed8',
+                        pointHoverBorderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    weight: '600'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            callbacks: {
+                                label: function (context) {
+                                    return `Loss: ${context.parsed.y.toFixed(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Loss',
+                                font: {
+                                    size: 13,
+                                    weight: 'bold'
+                                },
+                                color: '#4b5563'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                color: '#6b7280',
+                                callback: function (value) {
+                                    return value.toFixed(2);
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Training Round',
+                                font: {
+                                    size: 13,
+                                    weight: 'bold'
+                                },
+                                color: '#4b5563'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ DRAW PER-CLIENT LOSS CHART (IMPROVED) ============
+        function drawClientLossChart(clientMetrics) {
+            const canvas = document.getElementById('clientLossChart');
+            if (!canvas) {
+                console.warn('⚠️ Client loss chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            // Destroy existing chart
+            if (clientLossChartInstance) {
+                clientLossChartInstance.destroy();
+            }
+
+            // Prepare datasets for each client
+            const datasets = [];
+            const colors = [
+                { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },    // Blue
+                { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },     // Red
+                { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },    // Green
+                { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },    // Orange
+                { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },    // Purple
+                { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' }      // Cyan
+            ];
+            let colorIndex = 0;
+
+            for (const [clientId, clientData] of Object.entries(clientMetrics)) {
+                const rounds = clientData.map(d => d.round);
+                const losses = clientData.map(d => d.loss);
+                const color = colors[colorIndex % colors.length];
+
+                datasets.push({
+                    label: clientId.toUpperCase(),
+                    data: losses,
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: false,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: color.border,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                });
+
+                colorIndex++;
+            }
+
+            // Get all unique rounds
+            const allRounds = [...new Set(
+                Object.values(clientMetrics).flatMap(data => data.map(d => d.round))
+            )].sort((a, b) => a - b);
+
+            clientLossChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allRounds,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 10,
+                                font: {
+                                    size: 11,
+                                    weight: '600'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 11 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Loss',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Round',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ DRAW COMMUNICATION CHART (IMPROVED) ============
+        function drawCommunicationChart(commData) {
+            const canvas = document.getElementById('commChart');
+            if (!canvas) {
+                console.warn('⚠️ Communication chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            const rounds = commData.map(c => c.round);
+            const totalMB = commData.map(c => c.total_mb);
+
+            // Destroy existing chart
+            if (commChartInstance) {
+                commChartInstance.destroy();
+            }
+
+            commChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: rounds,
+                    datasets: [{
+                        label: 'Communication (MB)',
+                        data: totalMB,
+                        backgroundColor: 'rgba(6, 182, 212, 0.7)',
+                        borderColor: '#06b6d4',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        hoverBackgroundColor: 'rgba(6, 182, 212, 0.9)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 10,
+                                font: { size: 11, weight: '600' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.parsed.y.toFixed(2)} MB`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'MB Transferred',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280',
+                                callback: function (value) {
+                                    return value.toFixed(0) + ' MB';
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Training Round',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ DRAW PRIVACY BUDGET CHART (IMPROVED) ============
+        function drawPrivacyChart(privacyData) {
+            const canvas = document.getElementById('privacyChart');
+            if (!canvas) {
+                console.warn('⚠️ Privacy chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            const rounds = privacyData.map(p => p.round);
+            const cumulativeEps = privacyData.map(p => p.cumulative_epsilon);
+
+            // Destroy existing chart
+            if (privacyChartInstance) {
+                privacyChartInstance.destroy();
+            }
+
+            privacyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rounds,
+                    datasets: [{
+                        label: 'Cumulative ε (Privacy Budget)',
+                        data: cumulativeEps,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointStyle: 'circle'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 10,
+                                font: { size: 11, weight: '600' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            callbacks: {
+                                label: function (context) {
+                                    return `ε = ${context.parsed.y.toFixed(2)}`;
+                                },
+                                afterLabel: function () {
+                                    return 'Lower is more private';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Privacy Budget (ε)',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280',
+                                callback: function (value) {
+                                    return 'ε = ' + value.toFixed(1);
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Training Round',
+                                font: { size: 12, weight: 'bold' },
+                                color: '#4b5563'
+                            },
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ EXPORT FUNCTIONS ============
+        function exportPNG() {
+            showMessage('metricsMessage', 'PNG images saved in metrics/ folder (via backend)', 'info');
+        }
+
+        function exportLaTeX() {
+            showMessage('metricsMessage', 'LaTeX table saved in metrics/results_table.tex', 'info');
+        }
+
+        function exportCSV() {
+            showMessage('metricsMessage', 'CSV export coming soon! Use JSON for now.', 'info');
+        }
+
+        // ============ UTILITY: SHOW MESSAGE ============
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                console.warn(`⚠️ Message element not found: ${elementId}`);
+                return;
+            }
+
+            const classes = {
+                success: 'message-success',
+                error: 'message-error',
+                info: 'message-info'
+            };
+
+            if (message) {
+                element.innerHTML = `<div class="${classes[type]} fade-in" style="white-space: pre-line;">${message}</div>`;
+            } else {
+                element.innerHTML = '';
+            }
+        }
+
+        // ============ AUTO-LOAD ON PAGE LOAD ============
+        window.addEventListener('DOMContentLoaded', async function () {
+            console.log('✅ Page loaded. Checking for metrics...');
+
+            // Try to auto-load metrics if available
+            try {
+                await viewMetricsSummary();
+            } catch (e) {
+                console.log('⚠️ No metrics available yet. Train the model first.');
+            }
+        });
     </script>
 </body>
 
