@@ -257,22 +257,30 @@ async def health_check():
 
 @app.post("/api/initialize")
 async def initialize_system(config: InitializeRequest):
-    """Initialize the federated system"""
     try:
-        # Register clients with selected models
-        client_manager.register_client("company1", "data/company1", 
-                                      config.retriever_model, config.generator_model,use_lora=config.use_lora)
-        client_manager.register_client("company2", "data/company2",
-                                      config.retriever_model, config.generator_model,use_lora=config.use_lora)
+        # Initialize global model FIRST with selected models
+        fed_result = fed_server.initialize_global_model(
+            retriever_model=config.retriever_model,
+            generator_model=config.generator_model,
+            use_lora=config.use_lora
+        )
         
-        # Initialize global model
-        fed_result = fed_server.initialize_global_model()
+        # Then register clients with SAME models
+        client_manager.register_client("company1", "data/company1", 
+                                      config.retriever_model, 
+                                      config.generator_model,
+                                      use_lora=config.use_lora)
+        client_manager.register_client("company2", "data/company2",
+                                      config.retriever_model, 
+                                      config.generator_model,
+                                      use_lora=config.use_lora)
         
         return {
             "status": "success",
             "message": "System initialized",
             "retriever_model": config.retriever_model,
             "generator_model": config.generator_model,
+            "use_lora": config.use_lora,
             "details": fed_result
         }
     except Exception as e:

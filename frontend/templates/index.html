@@ -926,7 +926,7 @@
             const retrieverModel = document.getElementById('retrieverModel').value;
             const generatorModel = document.getElementById('generatorModel').value;
             const useLora = document.getElementById('useLora').value === 'true';
-            document.getElementById('loraStatus').textContent = useLora ? "Enabled ✅" : "Disabled";
+            document.getElementById('loraStatus').textContent = useLora ? "Enabled" : "Disabled";
 
             showMessage('initMessage', `Initializing system...`, 'info');
             try {

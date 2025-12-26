@@ -41,19 +41,28 @@ class FederatedServer:
 
 
     
-    def initialize_global_model(self):
-        print("Initializing global models...")
+    def initialize_global_model(self, retriever_model=None, generator_model=None, use_lora=True):
+        """Initialize global models with specified architecture"""
         
-        self.global_retriever = RetrieverModel()
-        self.global_generator = GeneratorModel(use_lora=True)
-
+        # Use provided models or defaults
+        if retriever_model is None:
+            retriever_model = 'sentence-transformers/all-mpnet-base-v2'
+        if generator_model is None:
+            generator_model = 'google/flan-t5-base'
+        
+        from models import RetrieverModel, GeneratorModel
+        
+        self.global_retriever = RetrieverModel(retriever_model)
+        self.global_generator = GeneratorModel(generator_model, use_lora=use_lora)
+        
         self.is_initialized = True
-
+        
         return {
             'status': 'success',
-            'message': 'Global models initialized',
-            'retriever_model': self.global_retriever.model_name,
-            'generator_model': self.global_generator.model_name
+            'retriever_model': retriever_model,
+            'generator_model': generator_model,
+            'use_lora': use_lora,
+            'message': 'Global model initialized'
         }
 
     
