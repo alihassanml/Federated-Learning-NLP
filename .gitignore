@@ -7,3 +7,4 @@ data/*
 !data/.gitkeep
 Resarch/
 logs/
+latex.tex
