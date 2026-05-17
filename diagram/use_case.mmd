@@ -1,0 +1,28 @@
+---
+title: FedSearch-NLP System Use Case Diagram
+---
+graph TB
+    Admin["👤 System Admin"]
+    User["👤 Company User"]
+    
+    subgraph FedSearch["FedSearch-NLP System"]
+        UC1["Initialize System"]
+        UC2["Upload Documents"]
+        UC3["Configure Training"]
+        UC4["Start Federated Round"]
+        UC5["Monitor Metrics"]
+        UC6["Query RAG System"]
+        UC7["View Privacy Budget"]
+    end
+    
+    Admin --> UC1
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5
+    Admin --> UC7
+    
+    User --> UC2
+    User --> UC6
+    
+    UC4 -.->|include| UC3
+    UC5 -.->|include| UC7

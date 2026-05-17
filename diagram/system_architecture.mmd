@@ -1,0 +1,69 @@
+flowchart TB
+    %% Premium Academic Color Palette (Clean Version)
+    classDef server fill:#eef2ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b,font-weight:bold
+    classDef security fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#7c2d12,font-weight:bold
+    classDef client fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d,font-weight:bold
+    classDef storage fill:#faf5ff,stroke:#9333ea,stroke-width:2px,color:#581c87,font-weight:bold
+    classDef default font-family:'Inter',sans-serif,font-size:13px;
+
+    subgraph Server_Hub ["Central Federated Server"]
+        direction TB
+        API["FastAPI Gateway"]
+        FS["Federated Coordinator"]
+        
+        subgraph Sec_Privacy ["Privacy & Security Engine"]
+            direction LR
+            DP["Adaptive DP"]
+            BD["Byzantine Defense"]
+            SA["Secure Aggregator"]
+        end
+        
+        GM["Global Model Repository"]
+        ML["Metrics & Research Logger"]
+        
+        API --- FS
+        FS --- GM
+        FS --- Sec_Privacy
+        FS --- ML
+    end
+
+    subgraph Client_Node ["Distributed Client (Company A/B)"]
+        direction TB
+        CM["Client Manager"]
+        
+        subgraph RAG_Core ["Multimodal RAG Pipeline"]
+            direction TB
+            PAR["Multimodal Parser<br/>(OCR + Table Extractor)"]
+            
+            subgraph Vector_DB ["Knowledge Base"]
+                IDX["FAISS Index"]
+            end
+            
+            subgraph Model_Stack ["Local Inference"]
+                RET["Retriever (MPNet)"]
+                GEN["Generator (FLAN-T5)"]
+                LORA["LoRA Adapters"]
+            end
+        end
+        
+        CM --- RAG_Core
+        PAR --> IDX
+        IDX --> RET
+        RET --> GEN
+        LORA -.-> GEN
+    end
+
+    %% Communication Channel
+    FS <==>|"Secure Gradient Exchange<br/>(Protobuf / Encrypted)"| CM
+    
+    %% Applying Classes
+    class Server_Hub,API,FS,GM,ML server
+    class Sec_Privacy,DP,BD,SA security
+    class Client_Node,CM,RAG_Core,RET,GEN,PAR client
+    class Vector_DB,IDX,LORA storage
+
+    %% Subgraph Styling
+    style Server_Hub fill:#f5f3ff,stroke:#4f46e5,stroke-width:3px,rx:10,ry:10
+    style Client_Node fill:#f0fdf4,stroke:#22c55e,stroke-width:3px,rx:10,ry:10
+    style Sec_Privacy fill:#fff7ed,stroke:#f97316,stroke-width:2px,rx:8,ry:8
+    style RAG_Core fill:#f0f9ff,stroke:#0ea5e9,stroke-width:2px,rx:8,ry:8

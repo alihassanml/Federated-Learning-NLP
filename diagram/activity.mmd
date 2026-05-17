@@ -1,0 +1,30 @@
+flowchart TD
+    Start([Start Federated Round]) --> Init[Initialize Global Model]
+    Init --> Distribute[Distribute Model to Clients]
+    
+    subgraph ClientExecution ["Client Execution (Parallel)"]
+        LocalTrain[Local Training RAG]
+        CalcGrad[Calculate Gradients]
+        AddNoise[Apply Adaptive DP Noise]
+        Mask[Secure Masking Pairwise]
+    end
+    
+    Distribute --> LocalTrain
+    LocalTrain --> CalcGrad
+    CalcGrad --> AddNoise
+    AddNoise --> Mask
+    Mask --> Upload[Upload Masked Updates]
+    
+    Upload --> SecureAgg{Secure Aggregation?}
+    
+    SecureAgg -- Yes --> Decrypt[Aggregate Masked Updates]
+    SecureAgg -- No or Fail --> RobustAgg[Byzantine Robust Aggregation]
+    
+    Decrypt --> UpdateGlobal[Update Global Model]
+    RobustAgg --> UpdateGlobal
+    
+    UpdateGlobal --> Log[Log Metrics]
+    Log --> CheckConverge{Converged?}
+    
+    CheckConverge -- No --> Start
+    CheckConverge -- Yes --> EndNode([End Training])

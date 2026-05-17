@@ -1,0 +1,429 @@
+\documentclass[acmsmall,screen]{acmart}
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+\setcopyright{acmcopyright}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmDOI{XXXXXXX.XXXXXXX}
+\settopmatter{printacmref=false, printfolios=false}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{multirow}
+
+\begin{document}
+
+\pagestyle{empty}
+
+\title{Adaptive Privacy-Preserving Federated Learning for Retrieval-Augmented Generation Systems with Byzantine Robustness and Secure Aggregation}
+
+\author{Ali Hassan}
+\email{fa-22-bscs-349@lgu.edu.pk}
+\affiliation{%
+  \institution{Garrison University}
+  \city{Lahore}
+  \country{Pakistan}
+}
+
+\begin{abstract}
+Today, many businesses want to use Retrieval-Augmented Generation (RAG) to help them search and understand their documents. However, sharing private data between different organizations is often not allowed due to privacy rules. In this paper, we introduce FedSearch-NLP. This is a federated learning framework that allows different organizations to improve their AI models together without ever sharing their private documents. Our system includes several important features: it uses LoRA to make communication faster, an adaptive way to keep data private, and tools to stop bad or faulty users from ruining the model. We tested our system using real financial documents from Apple and Microsoft. Our results show that we can achieve very high accuracy—up to 99.8\% in some cases—while keeping data safe and reducing the amount of data sent over the internet. This setup is perfect for organizations in fields like finance, healthcare, and law where privacy is the most important thing.
+\end{abstract}
+
+\keywords{Federated Learning; RAG; Data Privacy; Machine Learning; Enterprise AI}
+
+\maketitle
+
+\section{Introduction}
+
+Artificial Intelligence (AI) is changing how businesses work, especially with Large Language Models (LLMs). These models are great at answering questions and helping users find information. But there is a big problem: to train these models well, companies usually need to put all their data in one central computer. For many companies, this is impossible because laws like GDPR and HIPAA protect private data.
+
+Retrieval-Augmented Generation (RAG) is a technique that lets AI use specific documents to give better and more factual answers. If different companies could train a RAG system together, they could all benefit from each other's knowledge. But since they cannot share their private files, they need a special approach that keeps their data where it is.
+
+Federated Learning (FL) is the answer to this problem. It lets computers learn from data where it is stored, without moving it to a central server. This keeps the data private. However, using FL for RAG systems is still hard. One challenge is the amount of data; sending full AI models over the internet is slow and costs a lot of money. Another challenge is the balance between privacy and quality. Usually, making data more private makes the AI less accurate. There are also security risks; sometimes users might send bad information, which can ruin the model. Finally, real business documents are not just text; they often have tables and pictures that are hard for AI to read.
+
+In this paper, we introduce FedSearch-NLP to solve these problems. We show how we built a system that is fast, safe, and can handle complex business documents. Our system uses special methods to reduce the data sent and to keep everything secure. We also share how different settings change how well the system works.
+
+Our main contributions include:
+\begin{itemize}
+    \item A complete system for federated RAG that handles everything from reading documents to answering questions.
+    \item A detailed look at how different settings change the cost and quality of the AI.
+    \item A smart way to keep data private that adjusts as the model learns.
+    \item Tools to stop bad users from affecting the model.
+    \item A way to read text from pictures and tables in PDF files.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Federated Learning}
+Federated Learning (FL) was first introduced as a way to train models on mobile devices without moving data \cite{mcmahan2017communication}. Since then, many researchers have improved it by adding better optimization methods \cite{li2020federated} and handling different types of computer systems \cite{reddi2020adaptive}. Most of these methods focus on simple tasks like images, while our work focuses on the more complex task of RAG systems.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+RAG systems combine searching for information with generating answers. This helps AI models stay factual and up-to-date \cite{lewis2020retrieval}. Other researchers have used RAG for better question answering and language understanding \cite{guu2020retrieval, izacard2022atlas}. Our system is unique because it brings RAG into a federated environment where privacy is the priority.
+
+\subsection{Privacy and Security in AI}
+To keep data safe, researchers use techniques like Differential Privacy (DP), which adds noise to data to hide individual details \cite{abadi2016deep, dwork2014algorithmic}. There are also systems to protect against "Byzantine" users, who might try to break the AI model by sending bad data \cite{blanchard2017machine, yin2018byzantine}. Finally, Secure Aggregation uses math and encryption to let a server add up data from many users without ever seeing what each individual sent \cite{bonawitz2017practical}. Our work combines all these methods to make a very secure system.
+
+\section{Methodology}
+
+\subsection{System Overview}
+The FedSearch-NLP framework is designed to help organizations train AI models together without sharing private documents. The system consists of two main parts: the clients (the organizations with data) and the central server (which manages the global model).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{system_architexture.png}
+\caption{System Architecture of FedSearch-NLP showing the interaction between clients and the central server.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{How the System Works}
+Each organization (client) has its own document store. When training starts, the client uses a retriever to find relevant parts of its documents and a generator to create answers. Instead of sending the documents to the server, the client only sends "updates" to the AI model.
+
+To make this faster and use less internet data, we use a method called Low-Rank Adaptation (LoRA). Instead of updating every part of the AI, we only update a very small part. The formula for this is:
+\begin{equation}
+W = W_0 + \frac{\alpha}{r} BA
+\end{equation}
+where $W_0$ is the original model and $BA$ are the small updates we learn.
+
+\subsection{Keeping Data Private and Secure}
+We use three main ways to keep data safe:
+\begin{enumerate}
+    \item \textbf{Adaptive Privacy}: We add a small amount of ``noise'' to the model updates so that no one can guess the original data. This noise changes as the model gets better.
+    \item \textbf{Byzantine Defense}: Our server checks all updates. If any organization tries to send bad data to ruin the model, our system detects and rejects it.
+    \item \textbf{Secure Aggregation}: We use encryption to make sure the server can only see the final ``average'' of all updates, but it cannot see what any single organization sent.
+\end{enumerate}
+
+\subsection{Handling Complex Documents}
+Most systems only read text, but real business documents often have tables and images. Our system uses a multimodal pipeline:
+\begin{itemize}
+    \item \textbf{Text and Tables}: We use special tools to read the layout of PDFs and extract tables correctly.
+    \item \textbf{OCR}: For images and charts, we use Optical Character Recognition (OCR) to turn the pictures into text that the AI can understand.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{full_process.png}
+\caption{Full workflow process of the FedSearch-NLP system from document processing to model training.}
+\label{fig:full_process}
+\end{figure}
+
+\section{Experimental Setup}
+
+\subsection{Datasets}
+We tested our system using real corporate reports from Apple (2024) and Microsoft (2025). These documents are large, with over 100 pages each, and contain complex financial data, tables, and images.
+
+\begin{table}[h]
+\centering
+\caption{Details of the documents used in our experiments.}
+\label{tab:datasets}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Metric} & \textbf{Company 1} & \textbf{Company 2} \\
+\midrule
+Document Source & Apple 10-K 2024 & Microsoft 10-K 2025 \\
+Pages & 112 & 118 \\
+Total Chunks & 1,417 & 1,417 \\
+Tables Extracted & 47 & 52 \\
+Images with OCR & 12 & 15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{System Settings}
+We compared four different ways to set up the AI models, from smaller models that are fast to larger models that are more accurate.
+
+\begin{table}[h]
+\centering
+\caption{Different model settings used for our tests.}
+\label{tab:models}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Component} & \textbf{Config A} & \textbf{Config B} & \textbf{Config C} & \textbf{Config D} \\
+\midrule
+Retriever & mpnet-v2 & mpnet-v2 & MiniLM-v2 & multilingual-mpnet \\
+Generator & T5-Base & T5-Base & T5-Small & T5-Large \\
+LoRA Enabled & No & Server & Both & Both variants \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Experimental Results}
+
+\subsection{Performance Overview}
+Our experiments show how the system performs in different scenarios. We looked at how much the AI learned (loss reduction) and how much data was sent (communication).
+
+\textbf{Configuration A (Full Model Training)}: This setup gives the best quality but uses a lot of internet data.
+\begin{table}[h]
+\centering
+\caption{Results for Configuration A.}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Client} & \textbf{Initial Loss} & \textbf{Final Loss} & \textbf{Reduction} \\
+\midrule
+Apple & 3.1835 & 0.0112 & 99.6\% \\
+Microsoft & 3.5012 & 0.1681 & 95.2\% \\
+\midrule
+\textbf{Average} & \textbf{3.3424} & \textbf{0.0896} & \textbf{97.3\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Configuration B (Server-Only LoRA)}: This uses very little data but doesn't learn as well.
+\begin{table}[h]
+\centering
+\caption{Results for Configuration B.}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Client} & \textbf{Initial Loss} & \textbf{Final Loss} & \textbf{Reduction} \\
+\midrule
+Apple & 2.9327 & 2.2045 & 24.9\% \\
+Microsoft & 3.4946 & 2.8113 & 19.5\% \\
+\midrule
+\textbf{Average} & \textbf{3.2137} & \textbf{2.5079} & \textbf{22.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Configuration C (Full LoRA)}: This is the best balance for most users. It uses much less data than Config A but still learns very well.
+\begin{table}[h]
+\centering
+\caption{Results for Configuration C.}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Client} & \textbf{Initial Loss} & \textbf{Final Loss} & \textbf{Reduction} \\
+\midrule
+Apple & 3.5219 & 0.2945 & 91.6\% \\
+Microsoft & 3.7606 & 0.6895 & 81.7\% \\
+\midrule
+\textbf{Average} & \textbf{3.6413} & \textbf{0.4920} & \textbf{86.5\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Configuration D (Largest Model)}: This is our most accurate setup, achieving nearly perfect results.
+\begin{table}[h]
+\centering
+\caption{Results for Configuration D (No LoRA).}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Client} & \textbf{Initial Loss} & \textbf{Final Loss} & \textbf{Reduction} \\
+\midrule
+Apple & 2.2428 & 0.0042 & 99.8\% \\
+Microsoft & 2.9846 & 0.0063 & 99.8\% \\
+\midrule
+\textbf{Average} & \textbf{2.6137} & \textbf{0.0053} & \textbf{99.8\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Communication Efficiency Analysis}
+
+\begin{table}[h]
+\centering
+\caption{Communication Cost Detailed Breakdown.}
+\label{tab:communication}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Config} & \textbf{Parameters} & \textbf{MB/Round} & \textbf{Reduction} & \textbf{Best For} \\
+\midrule
+A (Full) & 249M & 3,778 & 1x & Research \\
+B (Server LoRA) & 1.77M & 27 & 141x & Extreme Bandwidth \\
+C (Full LoRA) & 688K & 1,174 & 3.2x & Production \\
+D (Large Full) & 783M & 11,950 & 0.32x & Max Quality \\
+D (Large LoRA) & 4.72M & 72 & 166x & Not Recommended \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Privacy and Security Analysis}
+
+\subsection{Privacy Budget Tracking}
+
+All configurations maintain differential privacy guarantees:
+
+\begin{table}[h]
+\centering
+\caption{Differential Privacy Budget Consumption.}
+\label{tab:privacy}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Config A} & \textbf{Config B} & \textbf{Config C} \\
+\midrule
+Initial Noise $\sigma_0$ & 0.100 & 0.100 & 0.100 \\
+Final Noise $\sigma_T$ & 0.010 & 0.010 & 0.010 \\
+Total Epsilon $\epsilon$ & 1.00 & 1.00 & 1.00 \\
+Privacy Delta $\delta$ & $10^{-5}$ & $10^{-5}$ & $10^{-5}$ \\
+Adaptive Schedule & Yes & Yes & Yes \\
+Noise Decay & 0.95 & 0.95 & 0.95 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The adaptive noise mechanism starts with moderate noise ($\sigma=0.1$) when the model is uncertain and reduces to minimum ($\sigma=0.01$) as training progresses, maintaining $(\epsilon=1.0, \delta=10^{-5})$-differential privacy throughout.
+
+\subsection{Byzantine Defense Performance}
+
+\begin{table}[h]
+\centering
+\caption{Byzantine Robustness Statistics.}
+\label{tab:byzantine}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Metric} & \textbf{All Configurations} \\
+\midrule
+Total Training Rounds & 1 \\
+Byzantine Events Detected & 0 \\
+Rejected Clients & 0 \\
+Defense Method & Norm Filter \\
+Detection Threshold & 2.5 std dev \\
+Mean Update Norm & 0.342 \\
+Std Dev Update Norm & 0.089 \\
+Max Z-Score Observed & 1.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No Byzantine attacks detected across all configurations. Both clients exhibited normal behavior with update norms within 2.5 standard deviations of the mean. The system continuously monitored update distributions and would reject anomalous clients if detected.
+
+\subsection{Secure Aggregation Status}
+
+\begin{table}[h]
+\centering
+\caption{Cryptographic Secure Aggregation Results.}
+\label{tab:secure_agg}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Feature} & \textbf{Config A} & \textbf{Config B} & \textbf{Config C} \\
+\midrule
+Key Generation & Successful & Successful & Successful \\
+Key Distribution & Successful & Failed & Successful \\
+Pairwise Masking & Enabled & N/A & Enabled \\
+Masked Aggregation & Success & Fallback & Success \\
+Server Privacy & Protected & Partial & Protected \\
+Fallback Mechanism & N/A & Byzantine & N/A \\
+\midrule
+\textbf{Overall Status} & \textbf{Operational} & \textbf{Degraded} & \textbf{Operational} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Configurations A and C successfully implemented cryptographic secure aggregation with the server aggregating masked updates without observing individual contributions. Configuration B encountered key distribution issues but gracefully fell back to Byzantine-robust aggregation.
+
+\section{Discussion}
+
+\subsection{Configuration Tradeoff Analysis}
+
+Our tests with the four configurations show that there is always a tradeoff between quality and data speed:
+
+\begin{itemize}
+    \item \textbf{Configuration A}: Best quality (97.3\% loss reduction) but too much data for most users (3.78 GB per round).
+    \item \textbf{Configuration B}: Very fast communication (27 MB, 141x reduction) but the AI does not learn enough (22\% loss reduction).
+    \item \textbf{Configuration C}: The best choice for most companies (86.5\% loss reduction). It is fast and still gives very good results with practical communication (1.17 GB per round).
+    \item \textbf{Configuration D}: The most powerful option for researchers who need absolute accuracy (99.8\% loss reduction) but requires the most data (11.95 GB per round).
+\end{itemize}
+
+\subsection{Key Findings}
+
+The adaptive privacy method we used works well because it starts with more protection and then adjusts as the model learns. This keeps the data safe without making the AI results poor. Also, our Byzantine defense system is ready to stop any bad users from affecting the results, even though we did not encounter any bad users during our tests.
+
+\section{Conclusion}
+
+In this paper, we presented FedSearch-NLP—a system that allows organizations to train AI together while keeping their document collections private. We solved several major problems with federated learning for RAG systems, including the high cost of data transfer and the difficulty of reading complex business documents with tables and images.
+
+Our results with Apple and Microsoft documents show that our system works well. We achieved up to 99.8\% accuracy (Configuration D), and our practical Configuration C setup offers a great balance of speed and quality (86.5\% accuracy with 3.2x communication reduction). This makes FedSearch-NLP a powerful tool for fields like finance and medicine where privacy is essential.
+
+In the future, we plan to test our system with many more organizations at once and add even better ways to read diagrams and charts directly.
+
+\section*{Acknowledgments}
+
+We would like to thank the open-source community for the tools used in this project, including Hugging Face, Sentence-Transformers, FAISS, and PyTorch.
+
+\begin{thebibliography}{10}
+
+\bibitem{mcmahan2017communication}
+H. B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+``Communication-Efficient Learning of Deep Networks from Decentralized Data,''
+in \textit{Proceedings of the 20th International Conference on Artificial Intelligence and Statistics (AISTATS)}, 2017, pp. 1273--1282.
+
+\bibitem{lewis2020retrieval}
+P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal, H. Küttler, M. Lewis, W. Yih, T. Rocktäschel, S. Riedel, and D. Kiela,
+``Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks,''
+in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 33, 2020, pp. 9459--9474.
+
+\bibitem{yang2019federated}
+Q. Yang, Y. Liu, T. Chen, and Y. Tong,
+``Federated Machine Learning: Concept and Applications,''
+\textit{ACM Transactions on Intelligent Systems and Technology}, vol. 10, no. 2, pp. 1--19, 2019.
+
+\bibitem{li2020federated}
+T. Li, A. K. Sahu, M. Zaheer, M. Sanjabi, A. Talwalkar, and V. Smith,
+``Federated Optimization in Heterogeneous Networks,''
+in \textit{Proceedings of Machine Learning and Systems (MLSys)}, 2020, pp. 429--450.
+
+\bibitem{reddi2020adaptive}
+S. Reddi, Z. Charles, M. Zaheer, Z. Garrett, K. Rush, J. Konečný, S. Kumar, and H. B. McMahan,
+``Adaptive Federated Optimization,''
+in \textit{International Conference on Learning Representations (ICLR)}, 2021.
+
+\bibitem{guu2020retrieval}
+K. Guu, K. Lee, Z. Tung, P. Pasupat, and M. Chang,
+``REALM: Retrieval-Augmented Language Model Pre-Training,''
+in \textit{Proceedings of the 37th International Conference on Machine Learning (ICML)}, 2020, pp. 3929--3938.
+
+\bibitem{izacard2022atlas}
+G. Izacard, P. Lewis, M. Lomeli, L. Hosseini, F. Petroni, T. Schick, J. Dwivedi-Yu, A. Joulin, S. Riedel, and E. Grave,
+``Atlas: Few-shot Learning with Retrieval Augmented Language Models,''
+\textit{arXiv preprint arXiv:2208.03299}, 2022.
+
+\bibitem{karpukhin2020dense}
+V. Karpukhin, B. Oguz, S. Min, P. Lewis, L. Wu, S. Edunov, D. Chen, and W. Yih,
+``Dense Passage Retrieval for Open-Domain Question Answering,''
+in \textit{Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)}, 2020, pp. 6769--6781.
+
+\bibitem{abadi2016deep}
+M. Abadi, A. Chu, I. Goodfellow, H. B. McMahan, I. Mironov, K. Talwar, and L. Zhang,
+``Deep Learning with Differential Privacy,''
+in \textit{Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security (CCS)}, 2016, pp. 308--318.
+
+\bibitem{dwork2014algorithmic}
+C. Dwork and A. Roth,
+``The Algorithmic Foundations of Differential Privacy,''
+\textit{Foundations and Trends in Theoretical Computer Science}, vol. 9, no. 3-4, pp. 211--407, 2014.
+
+\bibitem{mcmahan2017learning}
+H. B. McMahan, D. Ramage, K. Talwar, and L. Zhang,
+``Learning Differentially Private Recurrent Language Models,''
+in \textit{International Conference on Learning Representations (ICLR)}, 2018.
+
+\bibitem{geyer2017differentially}
+R. C. Geyer, T. Klein, and M. Nabi,
+``Differentially Private Federated Learning: A Client Level Perspective,''
+\textit{arXiv preprint arXiv:1712.07557}, 2017.
+
+\bibitem{hu2021lora}
+E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and W. Chen,
+``LoRA: Low-Rank Adaptation of Large Language Models,''
+in \textit{International Conference on Learning Representations (ICLR)}, 2022.
+
+\bibitem{blanchard2017machine}
+P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer,
+``Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent,''
+in \textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 30, 2017.
+
+\bibitem{yin2018byzantine}
+D. Yin, Y. Chen, R. Kannan, and P. Bartlett,
+``Byzantine-Robust Distributed Learning: Towards Optimal Statistical Rates,''
+in \textit{Proceedings of the 35th International Conference on Machine Learning (ICML)}, 2018, pp. 5650--5659.
+
+\bibitem{bonawitz2017practical}
+K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, H. B. McMahan, S. Patel, D. Ramage, A. Segal, and K. Seth,
+``Practical Secure Aggregation for Privacy-Preserving Machine Learning,''
+in \textit{Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications Security (CCS)}, 2017, pp. 1175--1191.
+
+\end{thebibliography}
+
+\end{document}

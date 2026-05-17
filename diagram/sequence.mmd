@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant Admin
+    participant Server
+    participant SecureAgg as SecureAggregator
+    participant ClientA as Client A
+    participant ClientB as Client B
+    participant DB as Global Model
+
+    Admin->>Server: POST /api/train (Config)
+    activate Server
+    
+    Server->>DB: Get Current State
+    DB-->>Server: Model Parameters
+    
+    par Distribute Model
+        Server->>ClientA: Update Model State
+        and
+        Server->>ClientB: Update Model State
+    end
+    
+    par Local Training
+        ClientA->>ClientA: Train LoRA (RAG)
+        and
+        ClientB->>ClientB: Train LoRA (RAG)
+    end
+    
+    ClientA->>ClientA: Apply DP Noise
+    ClientB->>ClientB: Apply DP Noise
+    
+    note over ClientA, ClientB: Secure Masking Exchange (Pairwise)
+    
+    ClientA->>Server: Upload Masked Update
+    ClientB->>Server: Upload Masked Update
+    
+    Server->>SecureAgg: Aggregate(Updates)
+    activate SecureAgg
+    SecureAgg-->>Server: Aggregated Gradients
+    deactivate SecureAgg
+    
+    Server->>Server: Apply Byzantine Check (Norm Filter)
+    Server->>DB: Update Global Weights
+    
+    Server-->>Admin: Round Complete (Metrics)
+    deactivate Server

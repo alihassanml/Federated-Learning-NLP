@@ -1,0 +1,30 @@
+---
+config:
+  theme: default
+  look: handDrawn
+  themeVariables:
+    fontSize: 27px
+---
+graph LR
+    Start([Start]) --> P1
+    P1["<span style='font-size:24px'><b>Initialization Phase</b></span><br/>Model Selection and Server Loading"] --> P2
+    P2["<span style='font-size:24px'><b>Security Layer</b></span><br/>Secure Aggregation and Key Exchange"] --> P3
+    P3["<span style='font-size:24px'><b>Data Processing</b></span><br/>OCR Parsing and FAISS Indexing"] --> P4
+  
+    P4["<span style='font-size:24px'><b>Training Phase</b></span><br/>Federated Learning Rounds and Aggregation"] --> P5
+    P5["<span style='font-size:24px'><b>Query Handling</b></span><br/>RAG Context Retrieval and LLM Generation"] --> P6
+    P6["<span style='font-size:24px'><b>Analysis & Output</b></span><br/>Performance Metrics and LaTeX Export"] --> End([Final])
+
+    {rank=same; Start; P1; P2; P3}
+    {rank=same; P4; P5; P6; End}
+
+    style P1 fill:#f0f7ff,stroke:#005cbf,stroke-width:2px
+    style P2 fill:#fff9f0,stroke:#d97706,stroke-width:2px
+    style P3 fill:#fdf4ff,stroke:#a21caf,stroke-width:2px
+    style P4 fill:#f0fff4,stroke:#16a34a,stroke-width:2px
+    style P5 fill:#fff1f2,stroke:#e11d48,stroke-width:2px
+    style P6 fill:#fefce8,stroke:#854d0e,stroke-width:2px
+    style Start fill:#ffffff,stroke:#333333,stroke-width:1.5px
+    style End fill:#ffffff,stroke:#333333,stroke-width:1.5px
+
+    classDef default fill:#fff,stroke:#333,stroke-width:1.5px,color:#000,font-size:25px;
